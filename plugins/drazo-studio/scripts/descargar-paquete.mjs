@@ -13,7 +13,7 @@ import os from "node:os"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
-export const NUCLEO_POR_DEFECTO = "https://content-os-sand.vercel.app"
+export const NUCLEO_POR_DEFECTO = "https://drazostudio.profimaxia.com"
 
 /** Lo único que puede haber ya en la carpeta: lo que deja la app de Claude al abrirla. */
 const PERMITIDOS_ANTES = new Set([".claude", "CLAUDE.md", ".DS_Store", "Thumbs.db", "desktop.ini"])

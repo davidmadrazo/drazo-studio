@@ -99,7 +99,7 @@ Estas cuentas son suyas y lo que guardan es suyo. Pídeselas de una en una: qué
 qué cuesta y exactamente qué tiene que hacer. Espera a que te pegue cada clave antes de pasar a la siguiente.
 
 **6.1 · Sus datos de acceso.** Pregúntale con qué correo quiere entrar en su app (mejor el suyo de siempre).
-Luego: `APP preparar --licencia <clave> --nucleo https://content-os-sand.vercel.app --email <correo>`.
+Luego: `APP preparar --licencia <clave> --nucleo https://drazostudio.profimaxia.com --email <correo>`.
 
 **6.2 · Supabase (su base de datos; gratis para empezar).** «Entra en supabase.com, crea tu cuenta (puedes
 entrar con Google) y después ve a tu cuenta → Access Tokens → Generate new token, ponle de nombre "Drazo Studio"
