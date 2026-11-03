@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "drazo-studio": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-drazo-studio.mjs"],
+      "env": {
+        "INSTANCIA_URL": "${user_config.instancia_url}",
+        "INSTANCIA_TOKEN": "${user_config.token_instancia}"
+      },
+      "timeout": 900000
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "drazo-studio",
+  "displayName": "Drazo Studio",
+  "version": "2.0.0",
+  "description": "Drazo Studio para Claude Code: ideas, ganchos, guiones, correcciones, virales, historias y carruseles con el método de ProfimaxIA, guardados en tu propia app.",
+  "author": {
+    "name": "ProfimaxIA",
+    "email": "davidmadrazo@profimaxia.com",
+    "url": "https://profimaxia.com"
+  },
+  "homepage": "https://profimaxia.com",
+  "repository": "https://github.com/davidmadrazo/drazo-studio",
+  "keywords": ["contenido", "reels", "guiones", "instagram", "drazo-studio"],
+  "userConfig": {
+    "instancia_url": {
+      "type": "string",
+      "title": "Dirección de tu Drazo Studio",
+      "description": "La dirección de tu app de Drazo Studio (por ejemplo, https://mi-drazo-studio.vercel.app). La pone el instalador.",
+      "required": true
+    },
+    "token_instancia": {
+      "type": "string",
+      "title": "Token de conexión de tu Drazo Studio",
+      "description": "El token que une este plugin con tu app. Lo genera el instalador y no se comparte.",
+      "required": true
+    }
+  }
+}

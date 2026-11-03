@@ -1,0 +1,4 @@
+# Paquetes del entorno de Python de Drazo Studio (venv propio en la carpeta de datos de Drazo Studio).
+faster-whisper
+numpy
+yt-dlp

@@ -1,0 +1,3 @@
+# Todo en LF: los .sh con CRLF no arrancan en macOS. Los .ps1 van en UTF-8 con BOM (PowerShell 5.1).
+* text=auto eol=lf
+*.zip binary

@@ -1,0 +1,17 @@
+{
+  "description": "Drazo Studio: al arrancar, avisa si el Node.js del equipo no tiene el último parche de seguridad. Nunca bloquea.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/aviso-node.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

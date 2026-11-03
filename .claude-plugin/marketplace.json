@@ -1,0 +1,19 @@
+{
+  "name": "drazo-studio",
+  "description": "Drazo Studio: tu sistema de contenido con el método de ProfimaxIA, dentro de Claude Code.",
+  "owner": {
+    "name": "ProfimaxIA",
+    "email": "davidmadrazo@profimaxia.com",
+    "url": "https://profimaxia.com"
+  },
+  "plugins": [
+    {
+      "name": "drazo-studio",
+      "source": "./plugins/drazo-studio",
+      "repository": "https://github.com/davidmadrazo/drazo-studio",
+      "description": "Drazo Studio: dile a Claude «ganchos para esta idea», «escribe el guion» o «diseca este reel» y lo hace con el método de ProfimaxIA, guardado en tu propia app. Necesita tu licencia.",
+      "category": "productivity",
+      "tags": ["contenido", "reels", "guiones"]
+    }
+  ]
+}
