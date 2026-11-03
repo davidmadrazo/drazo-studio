@@ -3,11 +3,12 @@
 // reel) corre aquí, en su ordenador. Entorno: INSTANCIA_URL e INSTANCIA_TOKEN (los pone el instalador).
 
 import { readFileSync } from "node:fs"
-import { servirStdio, exigirEntorno } from "./mcp-comun.mjs"
+import { servirStdio } from "./mcp-comun.mjs"
 
 const VERSION = JSON.parse(readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url), "utf8")).version
-const url = exigirEntorno("INSTANCIA_URL").replace(/\/+$/, "")
-const token = exigirEntorno("INSTANCIA_TOKEN")
+// Sin configurar, el servidor arranca igual: cada herramienta dice qué falta en vez de dejar el plugin caído
+const url = (process.env.INSTANCIA_URL ?? "").trim().replace(/\/+$/, "")
+const token = (process.env.INSTANCIA_TOKEN ?? "").trim()
 
 /** Compara versiones x.y.z: negativo si a es anterior a b. */
 export function compararVersiones(a, b) {
@@ -18,6 +19,9 @@ export function compararVersiones(a, b) {
 }
 
 async function pedir(metodo, ruta, cuerpo, tiempoMs = 300000) {
+  if (!url || !token) {
+    throw new Error("Drazo Studio no está configurado en este Claude: falta la dirección de tu app o su token. Dile a Claude «revisa mi instalación de Drazo Studio» o vuelve a pasar el paso del plugin de INSTALAR.md.")
+  }
   let respuesta
   try {
     respuesta = await fetch(`${url}${ruta}`, {
