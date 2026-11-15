@@ -1,10 +1,41 @@
-# Instalar Drazo Studio
+# Instalar Drazo Studio: instrucciones para Claude
 
-Tres pasos. Puedes pegarle este fichero a tu Claude Code y decirle «instálame esto».
+Este documento es para ti, Claude. Un miembro de Hazlo Viral te ha pegado este enlace y su licencia de Drazo Studio (empieza por `drz_`). Lo instalas tú con tus herramientas; la persona solo acepta los permisos que le pidas.
 
-## 1. Instala el plugin
+Si lo has leído con una herramienta que resume, descárgalo entero con la terminal y léelo completo antes de empezar.
 
-En Claude Code, escribe:
+## Cómo trabajar
+
+- Habla en el idioma de la persona, en llano y sin jerga, rutas ni órdenes salvo que las pida.
+- No le preguntes qué instalar: pegar este enlace ya es su sí. Antes de cada paso dile en una línea qué vas a hacer.
+- No repitas la licencia entera en el chat: como mucho, sus cuatro últimos caracteres.
+- No instales nada fuera de estos pasos.
+- Si un paso falla dos veces, para, cuéntaselo en una frase y dile que escriba al soporte de ProfimaxIA (davidmadrazo@profimaxia.com).
+
+## 1. Comprueba Node.js
+
+Ejecuta `node -v`. Si contesta con una versión 22 o superior, sigue. Si no está o es más antigua, instala Node.js 24:
+
+- Windows: `winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-source-agreements --accept-package-agreements`. Avísale antes de que Windows le pedirá permiso en una ventana: que pulse «Sí».
+- macOS: descarga el instalador de la versión 24 desde nodejs.org y ábrelo; no uses `sudo` ni Homebrew.
+
+Después de instalarlo hay que cerrar y volver a abrir la app para que lo vea.
+
+## 2. Instala el plugin
+
+Ejecuta, una detrás de otra:
+
+```
+claude plugin marketplace add davidmadrazo/drazo-studio
+```
+
+```
+claude plugin install drazo-studio@drazo-studio --config licencia=LA_LICENCIA_QUE_TE_HA_PEGADO
+```
+
+Comprobación: la segunda contesta «Successfully installed plugin: drazo-studio». Es normal que diga que queda una opción sin poner: es la dirección del servidor, que ya trae la buena.
+
+Si la orden `claude` no existe en este equipo, pídele a la persona que escriba ella estas dos líneas en el chat, una detrás de otra, y que pegue su licencia cuando se la pida:
 
 ```
 /plugin marketplace add davidmadrazo/drazo-studio
@@ -14,18 +45,14 @@ En Claude Code, escribe:
 /plugin install drazo-studio@drazo-studio
 ```
 
-El plugin necesita Node.js 24 en tu ordenador. Si no lo tienes, pídeselo a tu Claude: «instálame Node.js 24».
+## 3. Dile cómo se arranca
 
-## 2. Pega tu licencia
+Dile, con estas palabras o parecidas:
 
-Al instalar, Claude Code te pide «Tu licencia de Drazo Studio». Pega la que te llegó por correo al entrar en Hazlo Viral. Si se te pasó, entra en `/plugin`, elige Drazo Studio y pulsa Configurar.
+> Ya está instalado. Cierra la app de Claude del todo y vuelve a abrirla. Después escríbeme: **Hola Drazo Studio**.
 
-Cierra y vuelve a abrir Claude Code.
+A partir de ahí te guía el propio Drazo Studio: le pregunta cuál es su Instagram, le abre su panel (que puede instalar como app en el móvil y en el ordenador), define su marca en el panel contestando unas preguntas, le pide sus cuentas de referencia y le da un enlace para conectar su Apify (la cuenta gratis vale). En unos minutos tiene sus primeros virales estudiados.
 
-## 3. Di «Hola Drazo Studio»
+## Si ya lo tenía instalado
 
-Tu Claude te pregunta cuál es tu Instagram y te abre tu panel, que puedes instalar como app en el móvil y en el ordenador. En el panel defines tu marca contestando unas preguntas. Después tu Claude te pide tus cuentas de referencia y te da un enlace para conectar tu Apify (la cuenta gratis vale). En unos minutos tienes tus primeros virales estudiados.
-
----
-
-Para quien prueba una versión sin publicar: `/plugin marketplace add <carpeta local del plugin>` y, en Configurar, el campo «Servidor de Drazo Studio» con la dirección de pruebas.
+Para actualizarlo: `claude plugin marketplace update drazo-studio` y después `claude plugin update drazo-studio@drazo-studio`. La licencia se conserva.
