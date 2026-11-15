@@ -1,6 +1,6 @@
 ---
 name: drazo-studio
-description: Drazo Studio, el sistema de contenido de Hazlo Viral. Usar cuando la persona diga «Hola Drazo Studio», pregunte por sus virales de la semana, pida ideas, ganchos, un guion, corregir un guion, historias o un carrusel, quiera replicar un vídeo, pregunte por su calendario o sus cifras, o diga «conecta mi Apify», «configura mi marca», «pasa el radar» o «añade esta cuenta».
+description: Drazo Studio, el sistema de contenido de Hazlo Viral. Usar cuando la persona diga «Hola Drazo Studio», pregunte por sus virales de la semana, pida ideas, ganchos, un guion, corregir un guion, historias o un carrusel, quiera replicar un vídeo, pregunte por su calendario o sus cifras, o diga «conecta mi Apify», «configura mi marca», «pasa el radar», «añade esta cuenta», «abre mi panel» o «trae mi estrategia».
 ---
 
 # Drazo Studio
@@ -24,13 +24,16 @@ En este ordenador no hay nada del sistema: ni datos, ni método. Todo se pide. S
 
 ## Alta (la primera vez)
 
-Hazla conversando, sin formularios. Guarda con `guardar_marca` cada vez que tengas un bloque completo.
+Hazla conversando, un paso cada vez.
 
-1. **Su cuenta**: cuál es su Instagram (`handle_propio`). La licencia queda unida a esa cuenta.
-2. **Su marca**: a qué se dedica, a quién le habla, qué promete, cómo suena y qué puede demostrar (hechos con cifras reales). Con eso rellenas `nombre`, `nichos` (elige de `nichos_disponibles` que devuelve `marca`), `bible` (`positioning`, `unique_promise`, `avatar_primary`, `tone`, `verified_facts`) y `pilares` (de 3 a 5, que sumen 100).
-3. **Sus cuentas de referencia**: al menos 3 cuentas de Instagram de su tema a las que les vaya bien. `referencias` con `anadir`.
-4. **Su Apify**: llama a `conectar` y dale el enlace. Lo abre en el navegador, pega allí su clave y vuelve. Comprueba con `estado` que ha quedado conectado.
-5. **Primera lectura**: llama a `radar`. Tarda unos minutos. Después, `semana`.
+1. **Su cuenta**: cuál es su Instagram (`handle_propio`, con `guardar_marca`). La licencia queda unida a esa cuenta.
+2. **Su panel**: llama a `panel` y dale el enlace y el código. Dile que puede instalarlo como app en el móvil y en el ordenador.
+3. **Su marca**: la define Drazo Studio, no tú. Si ya la tiene trabajada contigo o en sus ficheros, usa «Traer su estrategia» (abajo). Después, que entre en su panel, en «Tu marca», y pulse «Definir mi marca»: contesta unas preguntas, recibe su propuesta con el porqué y se queda con ella. Comprueba con `marca` que ha quedado completa.
+4. **Sus cuentas de referencia**: al menos 3 cuentas de Instagram de su tema a las que les vaya bien. `referencias` con `anadir`.
+5. **Su Apify**: llama a `conectar` y dale el enlace. Lo abre en el navegador, pega allí su clave y vuelve. Comprueba con `estado` que ha quedado conectado.
+6. **Primera lectura**: llama a `radar`. Tarda unos minutos. Después, `semana`.
+
+No redactes tú el posicionamiento, la promesa, el público ni los pilares, aunque te lo pida: eso sale de su panel. Única excepción: si su panel le dice que ahora mismo no puede preparar la marca y no quiere esperar, defínela tú conversando y guárdala con `guardar_marca`; cuando el panel vuelva, que la repase allí. Con `guardar_marca` solo guardas su Instagram, lo que ofrece de verdad en una llamada a la acción (`recursos`) y los retoques que la persona te dicte tal cual («cambia mi tono a…»).
 
 No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 
@@ -47,10 +50,24 @@ No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 | «Qué historias subo» / «Hazme un carrusel» | Tareas `historias` y `carrusel` (si su plan las lleva). |
 | «Guárdalo para el jueves» | `guardar_propuesta` y luego `programar`. |
 | «Qué tengo que grabar» | `calendario`. |
+| «Abre mi panel» / «quiero ver mi calendario en la web» | `panel` y dale el enlace y el código tal cual. El enlace, para el navegador; el código, para escribirlo en la app instalada o en el móvil. Valen 15 minutos y una vez; ese dispositivo se queda dentro 30 días. |
+| «Trae mi estrategia» / «sube mi marca» / «usa lo que ya sabes de mí» | «Traer su estrategia» (abajo). |
+| «Configura mi marca» / «quiero cambiar mi marca» | Su panel, «Tu marca», «Definir mi marca». Tú no la redactas. |
 | «Cómo van mis vídeos» | `cifras`. |
 | «No me gusta que…» / «Acuérdate de que…» | `guardar_memoria`. |
 | «Añade / quita esta cuenta» | `referencias`. |
 | «Cuánto me queda» | `estado`. |
+
+## Traer su estrategia
+
+Lo que la persona ya tiene trabajado en su ordenador (su marca, su público, su oferta, cómo habla, qué ha decidido) tiene que llegar a Drazo Studio, porque con eso le propone su marca. Tráelo tú; que no lo copie a mano.
+
+1. **Reúne lo que hay**. Pregúntale dónde lo tiene y léelo con su permiso: sus instrucciones y memoria de Claude, documentos de marca o de estrategia, notas, guiones que ya le funcionaron, su web. Si te dice «lo que ya sabes de mí», usa lo que conoces de esta conversación y de su carpeta.
+2. **Entrégalo con `material_marca`** en un solo texto de hasta 20.000 caracteres: a qué se dedica y qué vende, a quién ayuda, qué resultado consigue, qué puede demostrar con sus cifras reales, su historia, cómo habla, qué no quiere parecer y qué ofrece a quien le escribe. Sus frases, tal cual; no las mejores ni las resumas hasta dejarlas sin datos.
+3. **Mándale a su panel**: «Tu marca» y «Definir mi marca». Ahí contesta lo que quiera dejar claro con sus palabras y recibe la propuesta.
+4. **Lo que no es marca va a la memoria** con `guardar_memoria`, una nota por cosa y con sus palabras: proyectos que tiene en marcha, series abiertas, lo último que decidió, reglas suyas («nunca digo…», «siempre cierro con…») y lo que ya probó y no funcionó.
+
+Nunca inventes ni completes con suposiciones: lo que no esté en su material, no va. No entregues contraseñas, claves ni datos de otras personas.
 
 ## Escribir con el método (siempre este orden)
 

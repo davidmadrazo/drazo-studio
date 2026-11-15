@@ -24,7 +24,7 @@ Cierra y vuelve a abrir Claude Code.
 
 ## 3. Di «Hola Drazo Studio»
 
-Tu Claude te pregunta por tu marca, tus cuentas de referencia y te da un enlace para conectar tu Apify (la cuenta gratis vale). En unos minutos tienes tus primeros virales estudiados.
+Tu Claude te pregunta cuál es tu Instagram y te abre tu panel, que puedes instalar como app en el móvil y en el ordenador. En el panel defines tu marca contestando unas preguntas. Después tu Claude te pide tus cuentas de referencia y te da un enlace para conectar tu Apify (la cuenta gratis vale). En unos minutos tienes tus primeros virales estudiados.
 
 ---
 

@@ -80,6 +80,8 @@ const llamar = (nombre, argumentos = {}) => ["tools/call", { name: nombre, argum
 const TABLA = [
   ["estado", {}, "GET", "/estado"],
   ["conectar", {}, "POST", "/conectar"],
+  ["panel", {}, "POST", "/panel"],
+  ["material_marca", { texto: "Lo que ya sé de esta persona: vende clases de inglés a adultos." }, "POST", "/material-marca"],
   ["marca", {}, "GET", "/marca"],
   ["guardar_marca", { nombre: "Marca" }, "POST", "/marca"],
   ["referencias", {}, "GET", "/referencias"],
@@ -98,11 +100,11 @@ const TABLA = [
   ["guardar_memoria", { texto: "nota" }, "POST", "/memoria"],
 ]
 
-test("las 18 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
+test("las 20 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
   recibidas.length = 0
   const [lista, ...resultados] = await sesion([["tools/list", {}], ...TABLA.map(([nombre, argumentos]) => llamar(nombre, argumentos))])
   const nombres = lista.result.tools.map((h) => h.name)
-  assert.equal(nombres.length, 18)
+  assert.equal(nombres.length, 20)
   assert.deepEqual([...new Set(TABLA.map(([nombre]) => nombre)), "puntuar_idea"].sort(), [...nombres].sort())
   assert.equal(recibidas.length, TABLA.length)
   TABLA.forEach(([nombre, argumentos, metodo, ruta], i) => {
@@ -111,7 +113,7 @@ test("las 18 herramientas, cada una a su ruta y con las tres cabeceras", async (
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.0.0")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.1.0")
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })

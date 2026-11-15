@@ -111,6 +111,11 @@ export const HERRAMIENTAS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "panel",
+    description: "Te da un enlace y un código para abrir tu panel de Drazo Studio (tu semana de virales, tus guardados, tu calendario, tu marca y tu cuenta). El enlace se abre en el navegador; el código se escribe en la app instalada o en el móvil. Valen 15 minutos y una sola vez; ese dispositivo se queda con la sesión abierta 30 días.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "marca",
     description: "Te muestra la ficha de tu marca tal y como está guardada: nombre, nichos, pilares, cuentas de referencia y lo que todavía falta.",
     inputSchema: { type: "object", properties: {} },
@@ -139,6 +144,15 @@ export const HERRAMIENTAS = [
           },
         },
       },
+    },
+  },
+  {
+    name: "material_marca",
+    description: "Entrega a Drazo Studio lo que ya sabes de esta persona y de su negocio (su estrategia, su público, su oferta, cómo habla, sus hechos con cifras) para que le proponga su marca. Tú no redactas la marca: pasas el material tal cual, en un solo texto.",
+    inputSchema: {
+      type: "object",
+      properties: { texto: { type: "string", description: "El material, en texto plano, de 40 a 20.000 caracteres." } },
+      required: ["texto"],
     },
   },
   {
@@ -292,6 +306,8 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
   switch (nombre) {
     case "estado": return comoTexto(await pedir("GET", "/estado"))
     case "conectar": return comoTexto(await pedir("POST", "/conectar", {}))
+    case "panel": return comoTexto(await pedir("POST", "/panel", {}))
+    case "material_marca": return comoTexto(await pedir("POST", "/material-marca", { texto: argumentos.texto }))
     case "marca": return comoTexto(await pedir("GET", "/marca"))
     case "guardar_marca": return comoTexto(await pedir("POST", "/marca", a))
     case "referencias":
