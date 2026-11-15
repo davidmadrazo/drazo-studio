@@ -34,8 +34,11 @@ export function servirStdio({ nombre, version, herramientas, ejecutar }) {
         const nombreHerramienta = params?.name
         const herramienta = herramientas.find((h) => h.name === nombreHerramienta)
         if (!herramienta) throw new Error(`Herramienta desconocida: ${nombreHerramienta}`)
-        const texto = await ejecutar(nombreHerramienta, params?.arguments ?? {})
-        responder({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: typeof texto === "string" ? texto : JSON.stringify(texto) }] } })
+        const resultado = await ejecutar(nombreHerramienta, params?.arguments ?? {})
+        const content = Array.isArray(resultado)
+          ? resultado
+          : [{ type: "text", text: typeof resultado === "string" ? resultado : JSON.stringify(resultado) }]
+        responder({ jsonrpc: "2.0", id, result: { content } })
         return
       }
       if (!esNotificacion) responder({ jsonrpc: "2.0", id, error: { code: -32601, message: `Método no soportado: ${method}` } })

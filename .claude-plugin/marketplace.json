@@ -1,6 +1,6 @@
 {
   "name": "drazo-studio",
-  "description": "Drazo Studio: tu sistema de contenido con el método de ProfimaxIA, dentro de Claude Code.",
+  "description": "Drazo Studio: el sistema de contenido de Hazlo Viral, dentro de Claude Code.",
   "owner": {
     "name": "ProfimaxIA",
     "email": "davidmadrazo@profimaxia.com",
@@ -11,9 +11,13 @@
       "name": "drazo-studio",
       "source": "./plugins/drazo-studio",
       "repository": "https://github.com/davidmadrazo/drazo-studio",
-      "description": "Drazo Studio: dile a Claude «ganchos para esta idea», «escribe el guion» o «diseca este reel» y lo hace con el método de ProfimaxIA, guardado en tu propia app. Necesita tu licencia.",
+      "description": "Tus virales de la semana ya estudiados, ideas con nota, ganchos y guiones para tu marca, y tu calendario. Necesita tu licencia de Drazo Studio.",
       "category": "productivity",
-      "tags": ["contenido", "reels", "guiones"]
+      "tags": [
+        "contenido",
+        "reels",
+        "guiones"
+      ]
     }
   ]
 }

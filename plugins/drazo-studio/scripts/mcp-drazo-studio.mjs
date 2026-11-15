@@ -1,14 +1,59 @@
-// Servidor MCP local de Drazo Studio. Habla con la app del miembro (su Vercel, sus datos) con su token: la app
-// pide al núcleo las piezas con método y las guarda como cuando se generan desde la web. Lo mecánico (ver un
-// reel) corre aquí, en su ordenador. Entorno: INSTANCIA_URL e INSTANCIA_TOKEN (los pone el instalador).
+// Servidor MCP local de Drazo Studio 3.x: un mando a distancia. Cada herramienta hace una petición HTTP al
+// servidor de Drazo Studio con la licencia del miembro y devuelve la respuesta. No ejecuta nada más en su
+// ordenador. Entorno: DRAZO_LICENCIA y DRAZO_SERVIDOR (los pone el plugin).
 
-import { readFileSync } from "node:fs"
+import { randomUUID } from "node:crypto"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
+import { pathToFileURL } from "node:url"
+
 import { servirStdio } from "./mcp-comun.mjs"
 
 const VERSION = JSON.parse(readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url), "utf8")).version
-// Sin configurar, el servidor arranca igual: cada herramienta dice qué falta en vez de dejar el plugin caído
-const url = (process.env.INSTANCIA_URL ?? "").trim().replace(/\/+$/, "")
-const token = (process.env.INSTANCIA_TOKEN ?? "").trim()
+
+const SERVIDOR_POR_DEFECTO = "https://drazostudio.profimaxia.com"
+const MENSAJE_SIN_LICENCIA = "Falta tu licencia de Drazo Studio. Pégala en la configuración del plugin (/plugin, Drazo Studio, Configurar) y vuelve a intentarlo."
+const MENSAJE_SIN_CONEXION = "No llego al servidor de Drazo Studio. Mira tu conexión y vuelve a intentarlo en un momento."
+
+/** La dirección del servidor: la de por defecto si no hay o no está sustituida. */
+function servidorConfigurado() {
+  const valor = (process.env.DRAZO_SERVIDOR ?? "").trim()
+  if (!valor || valor.startsWith("${")) return SERVIDOR_POR_DEFECTO
+  return valor.replace(/\/+$/, "")
+}
+
+const SERVIDOR = servidorConfigurado()
+
+function licenciaActual() {
+  const valor = (process.env.DRAZO_LICENCIA ?? "").trim()
+  return !valor || valor.startsWith("${") ? "" : valor
+}
+
+function carpetaDatos() {
+  const propia = (process.env.DRAZO_STUDIO_DATOS ?? "").trim()
+  return propia || join(homedir(), ".drazo-studio")
+}
+
+let idGuardado
+/** El identificador de esta instalación: se crea la primera vez y se reutiliza. */
+export function idInstalacion() {
+  if (idGuardado) return idGuardado
+  const carpeta = carpetaDatos()
+  mkdirSync(carpeta, { recursive: true })
+  const fichero = join(carpeta, "instalacion.json")
+  try {
+    const leido = JSON.parse(readFileSync(fichero, "utf8"))
+    if (leido?.id) {
+      idGuardado = leido.id
+      return idGuardado
+    }
+  } catch {}
+  const id = randomUUID()
+  writeFileSync(fichero, `${JSON.stringify({ id }, null, 1)}\n`)
+  idGuardado = id
+  return id
+}
 
 /** Compara versiones x.y.z: negativo si a es anterior a b. */
 export function compararVersiones(a, b) {
@@ -18,31 +63,34 @@ export function compararVersiones(a, b) {
   return 0
 }
 
-async function pedir(metodo, ruta, cuerpo, tiempoMs = 300000) {
-  if (!url || !token) {
-    throw new Error("Drazo Studio no está configurado en este Claude: falta la dirección de tu app o su token. Dile a Claude «revisa mi instalación de Drazo Studio» o vuelve a pasar el paso del plugin de INSTALAR.md.")
-  }
+async function pedir(metodo, ruta, cuerpo, tiempoMs = 120_000) {
+  const licencia = licenciaActual()
+  if (!licencia) throw new Error(MENSAJE_SIN_LICENCIA)
+  const llevaCuerpo = cuerpo !== undefined && cuerpo !== null
   let respuesta
   try {
-    respuesta = await fetch(`${url}${ruta}`, {
+    respuesta = await fetch(`${SERVIDOR}/api/studio${ruta}`, {
       method: metodo,
-      headers: { "x-instancia-token": token, "x-drazo-studio-plugin": VERSION, ...(cuerpo ? { "Content-Type": "application/json" } : {}) },
-      ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
+      headers: {
+        "x-drazo-licencia": licencia,
+        "x-drazo-instalacion": idInstalacion(),
+        "x-drazo-plugin": VERSION,
+        ...(llevaCuerpo ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(llevaCuerpo ? { body: JSON.stringify(cuerpo) } : {}),
       signal: AbortSignal.timeout(tiempoMs),
     })
-  } catch (error) {
-    throw new Error(`No llego a tu Drazo Studio (${url}): ${error?.cause?.code ?? error?.message ?? error}. Mira que tu app está publicada o pasa «revisa mi instalación».`)
+  } catch {
+    throw new Error(MENSAJE_SIN_CONEXION)
   }
   const texto = await respuesta.text()
   let datos
-  try { datos = texto ? JSON.parse(texto) : {} } catch { datos = { mensaje: texto.slice(0, 300) } }
-  if (!respuesta.ok) {
-    const codigo = datos.error ?? `http_${respuesta.status}`
-    const mensaje = datos.mensaje ?? (typeof datos.error === "string" && !datos.mensaje ? datos.error : "") ?? ""
-    throw new Error(`${codigo}${mensaje && mensaje !== codigo ? `: ${mensaje}` : ""}`)
-  }
+  try { datos = texto ? JSON.parse(texto) : {} } catch { datos = {} }
+  if (!respuesta.ok) throw new Error(datos?.mensaje || datos?.error || `Error ${respuesta.status}`)
   return datos
 }
+
+const comoTexto = (datos) => JSON.stringify(datos, null, 1)
 
 const consulta = (valores) => {
   const parametros = new URLSearchParams()
@@ -51,227 +99,232 @@ const consulta = (valores) => {
   return texto ? `?${texto}` : ""
 }
 
-const PILAR = { type: "integer", minimum: 1, maximum: 7, description: "Posición del pilar (la de marca.pilares). Sin él, elige el núcleo." }
-
 export const HERRAMIENTAS = [
   {
     name: "estado",
-    description: "Cómo está su Drazo Studio: versión, licencia, cuánto lleva del plan este mes por tarea, coste frente al techo y si falta Apify o Instagram. Úsala al saludar y cuando pregunte cuántas le quedan.",
+    description: "Te dice cómo va tu cuenta de Drazo Studio: qué plan tienes, cuánto llevas usado este mes y qué pasos te faltan por hacer.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "conectar",
+    description: "Te da un enlace para conectar tu cuenta de Apify con Drazo Studio. Ábrelo en el navegador y pega ahí tu clave.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "marca",
-    description: "Su ficha de marca: nombre, nichos, bible (posicionamiento, promesa, avatar, tono, hechos verificados), pilares, cuentas de referencia, si está completa y qué falta, y los nichos disponibles.",
+    description: "Te muestra la ficha de tu marca tal y como está guardada: nombre, nichos, pilares, cuentas de referencia y lo que todavía falta.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "guardar_marca",
-    description: "Guarda el alta o cambios de su marca. Los pilares sustituyen a los que hubiera y sus porcentajes suman 100; las referencias se añaden. La bible se mezcla con la que ya hay. Solo hechos que el miembro haya dicho: nada inventado.",
+    description: "Guarda los datos de su marca que le pases; lo demás se queda como estaba. La forma de cada campo la devuelve la herramienta marca.",
     inputSchema: {
       type: "object",
       properties: {
-        nombre: { type: "string", maxLength: 80 },
-        nichos: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 3, description: "Claves de marca.nichos_disponibles (slug)." },
-        bible: {
-          type: "object",
-          description: "Campos: positioning, mission, category, character, tone (lista), unique_promise, anti_positioning (lista), avatar_primary y avatar_secondary ({name, age, location, profile, pain, desire, monetization}), verified_facts (lista de hechos comprobados), pov (first_person|third_person), content_style, voice_rules ({first_person_always, no_ai_slop, must_have}).",
-        },
+        nombre: { type: "string" },
+        handle_propio: { type: "string" },
+        nichos: { type: "array", items: { type: "string" } },
+        bible: { type: "object" },
         pilares: {
-          type: "array", minItems: 1, maxItems: 7,
-          items: { type: "object", properties: { position: { type: "integer" }, name: { type: "string" }, percentage: { type: "integer" }, description: { type: "string" } }, required: ["position", "name", "percentage", "description"] },
-        },
-        referencias: {
-          type: "array", maxItems: 30,
-          items: { type: "object", properties: { platform: { type: "string", enum: ["instagram", "tiktok", "youtube"] }, handle: { type: "string" } }, required: ["handle"] },
-        },
-      },
-    },
-  },
-  {
-    name: "banco",
-    description: "Los virales de sus cuentas de referencia que más se salen de la media de su creador (veces la media), con si ya están vistos. pendientes=true da los que faltan por ver: son los que dan referencias a los ganchos.",
-    inputSchema: { type: "object", properties: { pendientes: { type: "boolean" }, limite: { type: "integer", minimum: 1, maximum: 50 } } },
-  },
-  {
-    name: "radar",
-    description: "Lee ya sus cuentas de referencia con su Apify y marca los virales nuevos en su banco, sin esperar a las tareas de lunes y jueves. Úsalo tras el alta o si añade referencias. Gasta de su Apify y tarda unos minutos.",
-    inputSchema: { type: "object", properties: {} },
-  },
-  {
-    name: "guardados",
-    description: "Los reels que guardó o pegó, con si ya están vistos y si les falta la propuesta. pendientes=true da los que no tienen propuesta.",
-    inputSchema: { type: "object", properties: { pendientes: { type: "boolean" }, limite: { type: "integer", minimum: 1, maximum: 50 } } },
-  },
-  {
-    name: "guardar_enlace",
-    description: "Añade un reel a sus Guardados pegando su enlace. Con Apify saca sus visitas y la media de su cuenta. Si el enlace no lleva el @, pásalo en handle (lo da ver_reel).",
-    inputSchema: { type: "object", properties: { url: { type: "string" }, handle: { type: "string" }, caption: { type: "string" } }, required: ["url"] },
-  },
-  {
-    name: "ver_reel",
-    description: "Ve un reel en su ordenador: lo baja, lo transcribe en local y prepara imágenes de sus fotogramas (arranque y hojas). Devuelve la transcripción y las rutas de las imágenes: ábrelas con Read para describir lo que se ve antes de guardar_diseccion. Puede tardar unos minutos.",
-    inputSchema: { type: "object", properties: { url: { type: "string" }, idioma: { type: "string", description: "es, en… o auto (por defecto)" }, forzar: { type: "boolean" } }, required: ["url"] },
-  },
-  {
-    name: "guardar_diseccion",
-    description: "Guarda en su app lo visto de un reel: la transcripción de ver_reel y lo que se ve en los fotogramas, solo lo que se ve. Así el banco lo usa como referencia y se puede analizar o adaptar.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        url: { type: "string" }, autor: { type: "string" }, caption: { type: "string" }, duracion_s: { type: "number" },
-        plataforma: { type: "string", enum: ["instagram", "tiktok", "youtube"] }, transcripcion: { type: "string" },
-        visual: {
-          type: "object",
-          properties: {
-            first_5s_visual: { type: "string", description: "Qué se ve en los primeros 5 s, plano a plano" },
-            visual_hook: { type: "string", description: "El elemento visual más potente del arranque" },
-            on_screen_text: { type: "array", items: { type: "string" }, description: "Texto en pantalla, literal" },
-            scene_setting: { type: "string" }, cut_rhythm: { type: "string", description: "Cortes contados en las hojas" },
-            broll_style: { type: "string" }, notable_visual_techniques: { type: "array", items: { type: "string" } }, motion_notes: { type: "string" },
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              position: { type: "integer", minimum: 1, maximum: 7 },
+              name: { type: "string" },
+              percentage: { type: "integer" },
+              description: { type: "string" },
+            },
+            required: ["position", "name", "percentage", "description"],
           },
         },
       },
-      required: ["url", "transcripcion"],
     },
   },
   {
-    name: "analizar_viral",
-    description: "Por qué funcionó un viral (gancho, estructura, llamada a la acción, retención), con el método. El reel tiene que estar visto antes (ver_reel + guardar_diseccion).",
-    inputSchema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
-  },
-  {
-    name: "puntuar_idea",
-    description: "Nota de una idea de vídeo y si merece grabarse. Una idea por llamada.",
-    inputSchema: { type: "object", properties: { idea: { type: "string", minLength: 5, maxLength: 600 }, formato: { type: "string", maxLength: 40 } }, required: ["idea"] },
-  },
-  {
-    name: "ganchos",
-    description: "Una tanda de ganchos para un tema, apoyados en los virales vistos de su banco. Cada gancho vuelve con su id: pásalo a guion.",
-    inputSchema: {
-      type: "object",
-      properties: { tema: { type: "string", minLength: 3, maxLength: 3000 }, pilar: PILAR, idioma: { type: "string" }, tipos: { type: "array", items: { type: "string" } } },
-      required: ["tema"],
-    },
-  },
-  {
-    name: "guion",
-    description: "El guion completo desde el gancho elegido (mejor por gancho_id), con llamada a la acción, notas de grabación, subtítulos y puntos de re-enganche. Para adaptar un viral visto, pasa su enlace en referencia_url.",
+    name: "referencias",
+    description: "Te enseña las cuentas de Instagram que sigues para inspirarte. Si le pasas cuentas para añadir o quitar, las actualiza.",
     inputSchema: {
       type: "object",
       properties: {
-        gancho_id: { type: "string" }, gancho: { type: "string", description: "El texto del gancho si no hay id" },
-        plataforma: { type: "string", enum: ["instagram", "tiktok", "youtube", "x", "linkedin"] },
-        formato: { type: "string", enum: ["reel", "tiktok", "short", "post", "thread"] },
-        duracion_s: { type: "integer", minimum: 10, maximum: 600 }, idea: { type: "string" }, referencia_url: { type: "string" },
+        anadir: { type: "array", items: { type: "string" } },
+        quitar: { type: "array", items: { type: "string" } },
       },
     },
   },
   {
-    name: "corregir",
-    description: "Corrige un guion, un gancho o una llamada a la acción: valoración, qué falla, cambios seguros y varias versiones con sus supuestos.",
+    name: "radar",
+    description: "Revisa ahora tus cuentas de referencia y busca los vídeos que mejor funcionan, sin esperar a la revisión automática. Puede tardar unos minutos.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "semana",
+    description: "Te enseña los virales más destacados de tus cuentas de referencia de esta semana.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "viral",
+    description: "Un viral de su banco entero: lo que dice, lo que se ve, por qué funcionó y dos hojas de fotogramas (los cinco primeros segundos y el vídeo completo). Se pide por su id (el de semana) o por su enlace. Indica uno de los dos.",
     inputSchema: {
       type: "object",
-      properties: { texto: { type: "string", minLength: 1, maxLength: 20000 }, tipo: { type: "string", enum: ["auto", "gancho", "cta", "guion_completo"] }, contexto: { type: "string", maxLength: 12000 } },
-      required: ["texto"],
+      properties: {
+        id: { type: "string" },
+        url: { type: "string" },
+      },
     },
   },
   {
-    name: "historias",
-    description: "Una secuencia de historias de Instagram para un tema.",
+    name: "guardar_enlace",
+    description: "Cuando la persona quiere replicar un vídeo concreto: manda su enlace de Instagram para que el servidor lo estudie. Tarda unos minutos; después se pide con viral y ese mismo enlace.",
     inputSchema: {
       type: "object",
-      properties: { tema: { type: "string" }, pilar: PILAR, total: { type: "integer", minimum: 5, maximum: 12 }, plantilla: { type: "string", enum: ["daily_vlog", "educational", "product_launch", "polls_engagement"] } },
-      required: ["tema"],
+      properties: { url: { type: "string" } },
+      required: ["url"],
     },
   },
   {
-    name: "carrusel",
-    description: "Un carrusel completo (diapositivas y pie) para un tema.",
+    name: "metodo_contexto",
+    description: "Pide el método de una tarea ANTES de escribir: ideas, ganchos, guion, corrección de guion, historias o carrusel. Cada apertura cuenta en el plan de la persona; dentro de la conversación se itera sin volver a abrirla. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de empezar. Con viral_id entra el viral que quiere replicar.",
     inputSchema: {
       type: "object",
-      properties: { tema: { type: "string" }, plataforma: { type: "string", enum: ["instagram", "linkedin", "tiktok"] }, pilar: PILAR, diapositivas: { type: "integer", minimum: 6, maximum: 12 } },
-      required: ["tema"],
+      properties: {
+        tarea: { type: "string", enum: ["idea", "gancho", "guion", "corregir_guion", "historias", "carrusel"] },
+        viral_id: { type: "string" },
+        max_ejemplos: { type: "integer", minimum: 0, maximum: 12 },
+        parte: { type: "integer", minimum: 1, maximum: 12 },
+      },
+      required: ["tarea"],
+    },
+  },
+  {
+    name: "metodo_verificar",
+    description: "Verifica lo escrito ANTES de enseñarlo: los ids de las reglas aplicadas de verdad y el texto que se va a entregar. Si pasa, devuelve el texto listo y un sello para guardar_propuesta; si no, dice qué corregir.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ids: { type: "array", items: { type: "string" } },
+        texto: { type: "string" },
+      },
+      required: ["ids", "texto"],
+    },
+  },
+  {
+    name: "puntuar_idea",
+    description: "Pone nota a una idea de vídeo (una frase) y dice qué criterios cumple. Cuenta en el plan de la persona.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        idea: { type: "string" },
+        formato: { type: "string" },
+        apoyo: { type: "string", description: "De qué viral sale la idea (enlace y veces sobre lo normal) y por qué el tema es de ahora. Sin datos de la marca." },
+      },
+      required: ["idea"],
     },
   },
   {
     name: "guardar_propuesta",
-    description: "Mete un vídeo en su calendario (o completa uno pendiente) con el gancho elegido, el guion y su pilar. Con url_origen completa la propuesta de ese guardado.",
+    description: "Guarda un vídeo en su calendario con su gancho y su guion. Hace falta el sello que devolvió metodo_verificar.",
     inputSchema: {
       type: "object",
       properties: {
-        brief_id: { type: "string" }, url_origen: { type: "string" }, gancho: { type: "string" }, opciones_gancho: { type: "array", items: { type: "string" } },
-        guion: { type: "string" }, angulo: { type: "string" }, pilar: { type: "string" }, notas: { type: "string" },
-        extras: { type: "object", description: "Lo que acompañe al guion: cta, notas de grabación, sello…" },
+        gancho: { type: "string", description: "El gancho elegido, en una frase." },
+        guion: { type: "string", description: "El guion entero, tal como lo devolvió metodo_verificar." },
+        opciones_gancho: { type: "array", items: { type: "string" }, description: "Las otras opciones de gancho que se le ofrecieron." },
+        angulo: { type: "string", description: "El ángulo del vídeo en una frase." },
+        pilar: { type: "string", description: "El pilar de su marca al que pertenece." },
+        notas: { type: "string", description: "Notas de grabación." },
+        url_origen: { type: "string", description: "El enlace del viral del que parte, si replica uno." },
+        brief_id: { type: "string", description: "Para cambiar un vídeo que ya está en su calendario en vez de crear otro." },
+        sello: { type: "object", description: "El sello que devolvió metodo_verificar, tal cual." },
       },
       required: ["gancho"],
     },
   },
   {
     name: "programar",
-    description: "Pone fecha a un vídeo del calendario (ISO con zona, por ejemplo 2026-11-10T09:00:00+01:00) o se la quita (fecha null).",
-    inputSchema: { type: "object", properties: { brief_id: { type: "string" }, fecha: { type: ["string", "null"] } }, required: ["brief_id", "fecha"] },
+    description: "Pone fecha a un vídeo de su calendario (fecha en ISO con zona, por ejemplo 2026-11-20T18:00:00+01:00) o se la quita (null).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        brief_id: { type: "string" },
+        fecha: { type: ["string", "null"] },
+      },
+      required: ["brief_id", "fecha"],
+    },
   },
   {
     name: "calendario",
-    description: "Sus vídeos: por hacer (new), programados (scheduled), grabando (recording) y, si lo pide, publicados (published).",
-    inputSchema: { type: "object", properties: { estado: { type: "string", description: "Lista separada por comas" }, limite: { type: "integer", minimum: 1, maximum: 100 } } },
+    description: "Te enseña tus vídeos según su estado: por hacer, programados, grabando o publicados.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        estado: { type: "string" },
+        limite: { type: "integer" },
+      },
+    },
   },
   {
     name: "cifras",
-    description: "Sus vídeos de los últimos 30 días: cuántos, la mediana de visitas y los cinco mejores con cuántas veces su mediana.",
+    description: "Te enseña cómo van tus vídeos de los últimos 30 días: cuántos son, las visitas habituales y los mejores.",
     inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "memoria",
+    description: "Te enseña las notas y los hechos que has pedido recordar.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "guardar_memoria",
+    description: "Guarda una nota para que Drazo Studio la recuerde, o borra una que ya no quieras.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        texto: { type: "string" },
+        tipo: { type: "string", enum: ["regla", "hecho", "aprendido"] },
+        olvidar: { type: "string" },
+      },
+    },
   },
 ]
 
-let verReel
-async function cargarVerReel() {
-  verReel ??= (await import("./reel-local.mjs")).verReel
-  return verReel
-}
-
-export async function ejecutar(nombre, a = {}) {
+export async function ejecutarHerramienta(nombre, argumentos = {}) {
+  const a = argumentos ?? {}
   switch (nombre) {
-    case "estado": {
-      const estado = await pedir("GET", "/api/instancia/estado", null, 60000)
-      const desfasado = estado.plugin_minimo && compararVersiones(VERSION, estado.plugin_minimo) < 0
-      return { ...estado, plugin: VERSION, ...(desfasado ? { aviso_plugin: `Tu plugin de Drazo Studio (${VERSION}) es anterior al que pide tu app (${estado.plugin_minimo}): actualízalo.` } : {}) }
+    case "estado": return comoTexto(await pedir("GET", "/estado"))
+    case "conectar": return comoTexto(await pedir("POST", "/conectar", {}))
+    case "marca": return comoTexto(await pedir("GET", "/marca"))
+    case "guardar_marca": return comoTexto(await pedir("POST", "/marca", a))
+    case "referencias":
+      if (a.anadir !== undefined || a.quitar !== undefined) return comoTexto(await pedir("POST", "/referencias", a))
+      return comoTexto(await pedir("GET", "/referencias"))
+    case "radar": return comoTexto(await pedir("POST", "/radar", {}, 300_000))
+    case "semana": return comoTexto(await pedir("GET", "/semana"))
+    case "viral": {
+      if (!a.id && !a.url) throw new Error("Indica el id del viral o su enlace.")
+      const ruta = a.id ? `/viral?id=${encodeURIComponent(a.id)}` : `/viral?url=${encodeURIComponent(a.url)}`
+      const { hojas, ...resto } = await pedir("GET", ruta)
+      return [
+        { type: "text", text: comoTexto(resto) },
+        ...(hojas ?? []).map((hoja) => ({ type: "image", data: hoja.base64, mimeType: hoja.mime })),
+      ]
     }
-    case "marca": return pedir("GET", "/api/instancia/marca", null, 60000)
-    case "guardar_marca": return pedir("POST", "/api/instancia/marca", a, 60000)
-    case "banco": return pedir("GET", `/api/instancia/banco${consulta({ pendientes: a.pendientes ? 1 : undefined, limite: a.limite })}`, null, 60000)
-    case "radar": return pedir("POST", "/api/instancia/radar", {}, 300000)
-    case "guardados": return pedir("GET", `/api/instancia/guardados${consulta({ pendientes: a.pendientes ? 1 : undefined, limite: a.limite })}`, null, 60000)
-    case "guardar_enlace": return pedir("POST", "/api/saved/add", { url: a.url, ...(a.handle ? { handle: a.handle } : {}), ...(a.caption ? { caption: a.caption } : {}) })
-    case "ver_reel": {
-      const ver = await cargarVerReel()
-      return ver(String(a.url ?? ""), { forzar: Boolean(a.forzar), ...(a.idioma ? { idioma: a.idioma } : {}) })
+    case "guardar_enlace": return comoTexto(await pedir("POST", "/enlace", { url: a.url }))
+    case "metodo_contexto": {
+      const { contexto, ...resto } = await pedir("POST", "/metodo-contexto", a)
+      return [{ type: "text", text: contexto }, { type: "text", text: comoTexto(resto) }]
     }
-    case "guardar_diseccion": return pedir("POST", "/api/instancia/diseccion", a, 60000)
-    case "analizar_viral": return pedir("POST", "/api/outliers/analyze", { url: a.url })
-    case "puntuar_idea": return pedir("POST", "/api/ideas/score", { idea: a.idea, ...(a.formato ? { formato: a.formato } : {}) })
-    case "ganchos":
-      return pedir("POST", "/api/hooks/generate", {
-        topic: a.tema, ...(a.pilar ? { pillar_position: a.pilar } : {}), ...(a.idioma ? { language: a.idioma } : {}), ...(a.tipos?.length ? { hook_types: a.tipos } : {}),
-      })
-    case "guion":
-      if (!a.gancho_id && !a.gancho) throw new Error("Falta el gancho: pasa gancho_id (de la tanda de ganchos) o el texto en gancho.")
-      return pedir("POST", "/api/scripts/generate", {
-        ...(a.gancho_id ? { hook_id: a.gancho_id } : { hook_text: a.gancho }),
-        platform: a.plataforma ?? "instagram", content_type: a.formato ?? "reel",
-        ...(a.duracion_s ? { target_duration_s: a.duracion_s } : {}), ...(a.idea ? { idea: a.idea } : {}), ...(a.referencia_url ? { referencia_url: a.referencia_url } : {}),
-      })
-    case "corregir":
-      return pedir("POST", "/api/scripts/correct", { texto: a.texto, ...(a.tipo || a.contexto ? { revision: { tipo: a.tipo ?? "auto", contexto: a.contexto ?? "" } } : {}) })
-    case "historias":
-      return pedir("POST", "/api/stories/generate", { theme: a.tema, ...(a.pilar ? { pillar_position: a.pilar } : {}), ...(a.total ? { total: a.total } : {}), ...(a.plantilla ? { template: a.plantilla } : {}) })
-    case "carrusel":
-      return pedir("POST", "/api/carousels/generate", { topic: a.tema, platform: a.plataforma ?? "instagram", ...(a.pilar ? { pillar_position: a.pilar } : {}), ...(a.diapositivas ? { slide_count: a.diapositivas } : {}) })
-    case "guardar_propuesta": return pedir("POST", "/api/instancia/propuesta", a, 60000)
-    case "programar": return pedir("POST", "/api/instancia/programar", { brief_id: a.brief_id, fecha: a.fecha ?? null }, 60000)
-    case "calendario": return pedir("GET", `/api/instancia/calendario${consulta({ estado: a.estado, limite: a.limite })}`, null, 60000)
-    case "cifras": return pedir("GET", "/api/instancia/cifras", null, 60000)
+    case "metodo_verificar": return comoTexto(await pedir("POST", "/metodo-verificar", a))
+    case "puntuar_idea": return comoTexto(await pedir("POST", "/puntuar-idea", a))
+    case "guardar_propuesta": return comoTexto(await pedir("POST", "/propuesta", a))
+    case "programar": return comoTexto(await pedir("POST", "/programar", a))
+    case "calendario": return comoTexto(await pedir("GET", `/calendario${consulta({ estado: a.estado, limite: a.limite })}`))
+    case "cifras": return comoTexto(await pedir("GET", "/cifras"))
+    case "memoria": return comoTexto(await pedir("GET", "/memoria"))
+    case "guardar_memoria": return comoTexto(await pedir("POST", "/memoria", a))
     default: throw new Error(`Herramienta desconocida: ${nombre}`)
   }
 }
 
-servirStdio({ nombre: "drazo-studio", version: VERSION, herramientas: HERRAMIENTAS, ejecutar })
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  servirStdio({ nombre: "drazo-studio", version: VERSION, herramientas: HERRAMIENTAS, ejecutar: ejecutarHerramienta })
+}
