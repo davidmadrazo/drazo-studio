@@ -80,6 +80,10 @@ const llamar = (nombre, argumentos = {}) => ["tools/call", { name: nombre, argum
 const TABLA = [
   ["estado", {}, "GET", "/estado"],
   ["conectar", {}, "POST", "/conectar"],
+  ["research", {}, "GET", "/research"],
+  ["research", { accion: "conectar", acepto: true }, "POST", "/research"],
+  ["research", { accion: "ya_esta" }, "POST", "/research"],
+  ["research", { accion: "desconectar" }, "POST", "/research"],
   ["panel", {}, "POST", "/panel"],
   ["material_marca", { texto: "Lo que ya sé de esta persona: vende clases de inglés a adultos." }, "POST", "/material-marca"],
   ["marca", {}, "GET", "/marca"],
@@ -88,6 +92,7 @@ const TABLA = [
   ["referencias", { anadir: ["cuenta"] }, "POST", "/referencias"],
   ["radar", {}, "POST", "/radar"],
   ["semana", {}, "GET", "/semana"],
+  ["descubridor", {}, "GET", "/descubridor"],
   ["viral", { id: "v1" }, "GET", "/viral"],
   ["guardar_enlace", { url: "https://www.instagram.com/reel/ABC/" }, "POST", "/enlace"],
   ["metodo_contexto", { tarea: "guion", parte: 2 }, "POST", "/metodo-contexto"],
@@ -100,11 +105,11 @@ const TABLA = [
   ["guardar_memoria", { texto: "nota" }, "POST", "/memoria"],
 ]
 
-test("las 20 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
+test("las 22 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
   recibidas.length = 0
   const [lista, ...resultados] = await sesion([["tools/list", {}], ...TABLA.map(([nombre, argumentos]) => llamar(nombre, argumentos))])
   const nombres = lista.result.tools.map((h) => h.name)
-  assert.equal(nombres.length, 20)
+  assert.equal(nombres.length, 22)
   assert.deepEqual([...new Set(TABLA.map(([nombre]) => nombre)), "puntuar_idea"].sort(), [...nombres].sort())
   assert.equal(recibidas.length, TABLA.length)
   TABLA.forEach(([nombre, argumentos, metodo, ruta], i) => {
@@ -113,12 +118,20 @@ test("las 20 herramientas, cada una a su ruta y con las tres cabeceras", async (
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.1.0")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.2.0")
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })
   assert.equal(recibidas[TABLA.findIndex(([n]) => n === "calendario")].consulta, "?estado=new&limite=5")
   assert.equal(recibidas[TABLA.findIndex(([n]) => n === "viral")].consulta, "?id=v1")
+})
+
+test("research sin acepto no llama al servidor y devuelve el aviso para leérselo a la persona", async () => {
+  recibidas.length = 0
+  const [respuesta] = await sesion([llamar("research", { accion: "conectar" })])
+  assert.ok(!respuesta.result.isError)
+  assert.match(respuesta.result.content[0].text, /incumple las condiciones de uso de Instagram/)
+  assert.equal(recibidas.length, 0)
 })
 
 test("viral devuelve el texto sin las hojas y una imagen por hoja; metodo_contexto, el método primero", async () => {
@@ -177,5 +190,11 @@ test("el plugin es solo un mando a distancia: ni restos de la versión instalada
   // Ningún código de regla del canon ni la política del servidor en lo que se instala en el ordenador del miembro
   assert.ok(!/\b(SIS|ALG|MET|CUE|IDE|GAN|GUI|FOR|EDI|HIS|PUB|EMB|VEN)-\d{3}\b/.test(texto))
   assert.ok(!texto.includes("CÓMO RESPONDES") && !texto.includes("CÓMO SE ENTREGA"))
+})
 
+test("«utiliza el método Drazo» activa el skill y en lo instalado no aparece la palabra canon", () => {
+  const skill = readFileSync(path.join(raiz, "skills", "drazo-studio", "SKILL.md"), "utf8")
+  const descripcion = skill.split("\n").find((linea) => linea.startsWith("description:"))
+  assert.match(descripcion, /utiliza el método Drazo/)
+  assert.match(skill, /\| «Utiliza el método Drazo»/)
 })

@@ -90,6 +90,10 @@ async function pedir(metodo, ruta, cuerpo, tiempoMs = 120_000) {
   return datos
 }
 
+const AVISO_RESEARCH =
+  "Automatizar una cuenta de Instagram incumple las condiciones de uso de Instagram y esa cuenta puede quedar limitada o cerrada. " +
+  "Conecta solo una cuenta nueva creada para esto, nunca la tuya. Drazo no responde de una cuenta de research cerrada."
+
 const comoTexto = (datos) => JSON.stringify(datos, null, 1)
 
 const consulta = (valores) => {
@@ -109,6 +113,17 @@ export const HERRAMIENTAS = [
     name: "conectar",
     description: "Te da un enlace para conectar tu cuenta de Apify con Drazo Studio. Ábrelo en el navegador y pega ahí tu clave.",
     inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "research",
+    description: "La cuenta de research: una cuenta de Instagram nueva, creada solo para esto, con la que Drazo Studio mira una vez al día lo que Instagram le enseña y saca más virales de su nicho. Con accion estado (por defecto) dice cómo va; con conectar da un enlace de un solo uso para que la persona entre ella misma en Instagram (exige acepto: true, y antes hay que leerle el aviso entero y que diga que sí; sin acepto devuelve el aviso); con ya_esta reanuda tras una comprobación de Instagram; con desconectar la retira.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accion: { type: "string", enum: ["estado", "conectar", "ya_esta", "desconectar"] },
+        acepto: { type: "boolean", description: "Solo con conectar: true si la persona ha leído el aviso y ha dicho que sí." },
+      },
+    },
   },
   {
     name: "panel",
@@ -174,6 +189,11 @@ export const HERRAMIENTAS = [
   {
     name: "semana",
     description: "Te enseña los virales más destacados de tus cuentas de referencia de esta semana.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "descubridor",
+    description: "Te enseña los virales que ha encontrado el scroll de tu cuenta de research, aparte de los de tus cuentas de referencia. Cada uno se abre con `viral` por su id.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -306,6 +326,16 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
   switch (nombre) {
     case "estado": return comoTexto(await pedir("GET", "/estado"))
     case "conectar": return comoTexto(await pedir("POST", "/conectar", {}))
+    case "research": {
+      const accion = a.accion ?? "estado"
+      if (accion === "estado") return comoTexto(await pedir("GET", "/research"))
+      if (accion === "conectar") {
+        if (a.acepto !== true) return comoTexto({ aviso: AVISO_RESEARCH, instrucciones: "Léele este aviso entero a la persona y pregúntale si lo entiende y lo acepta. Solo si dice que sí, vuelve a llamar con accion conectar y acepto true." })
+        return comoTexto(await pedir("POST", "/research", { accion: "conectar", acepto: true }))
+      }
+      if (accion === "ya_esta" || accion === "desconectar") return comoTexto(await pedir("POST", "/research", { accion }))
+      throw new Error("La acción de research tiene que ser estado, conectar, ya_esta o desconectar.")
+    }
     case "panel": return comoTexto(await pedir("POST", "/panel", {}))
     case "material_marca": return comoTexto(await pedir("POST", "/material-marca", { texto: argumentos.texto }))
     case "marca": return comoTexto(await pedir("GET", "/marca"))
@@ -315,6 +345,7 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
       return comoTexto(await pedir("GET", "/referencias"))
     case "radar": return comoTexto(await pedir("POST", "/radar", {}, 300_000))
     case "semana": return comoTexto(await pedir("GET", "/semana"))
+    case "descubridor": return comoTexto(await pedir("GET", "/descubridor"))
     case "viral": {
       if (!a.id && !a.url) throw new Error("Indica el id del viral o su enlace.")
       const ruta = a.id ? `/viral?id=${encodeURIComponent(a.id)}` : `/viral?url=${encodeURIComponent(a.url)}`

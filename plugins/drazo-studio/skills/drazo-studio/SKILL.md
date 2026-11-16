@@ -1,6 +1,6 @@
 ---
 name: drazo-studio
-description: Drazo Studio, el sistema de contenido de Hazlo Viral. Usar cuando la persona diga «Hola Drazo Studio», pregunte por sus virales de la semana, pida ideas, ganchos, un guion, corregir un guion, historias o un carrusel, quiera replicar un vídeo, pregunte por su calendario o sus cifras, o diga «conecta mi Apify», «configura mi marca», «pasa el radar», «añade esta cuenta», «abre mi panel» o «trae mi estrategia».
+description: Drazo Studio, el sistema de contenido de Hazlo Viral. Usar cuando la persona diga «Hola Drazo Studio» o «utiliza el método Drazo» (o «usa el método Drazo», «con el método Drazo»), pregunte por sus virales de la semana, pida ideas, ganchos, un guion, corregir un guion, historias o un carrusel, quiera replicar un vídeo, pregunte por su calendario o sus cifras, o diga «conecta mi Apify», «configura mi marca», «busca mis virales», «qué hay en mi descubridor», «pasa el radar», «añade esta cuenta», «abre mi panel», «trae mi estrategia», «conecta mi cuenta de research», «cuenta de pruebas de Instagram» o «desconecta mi cuenta de research» (y «ya está» cuando Instagram había pedido una comprobación).
 ---
 
 # Drazo Studio
@@ -41,7 +41,9 @@ No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 
 | La persona dice | Tú haces |
 |---|---|
+| «Utiliza el método Drazo» / «usa el método Drazo» | Si viene con lo que quiere («…y hazme ganchos para…»), es esa tarea con su método (abajo). Si va sola, pregúntale qué quiere hacer: ideas, ganchos, un guion, revisar un guion, historias o un carrusel. Abre solo esa tarea, nunca todas. |
 | «Enséñame el segundo» | `viral` con su id. Enseña la transcripción, lo que se ve y por qué funcionó. Mira las hojas de fotogramas antes de contarlo. |
+| «Qué hay en mi descubridor» / «Enséñame el descubridor» | `descubridor`: los virales que ha encontrado el scroll de su cuenta de research, aparte de los de sus cuentas de referencia. Ábrelos con `viral` por su id. |
 | «Quiero replicar este» + enlace | `guardar_enlace`. Cuando esté estudiado, `viral` con el enlace. |
 | «Dame ideas» | Tarea `idea`. Cada idea pasa por `puntuar_idea`. |
 | «Hazme ganchos para…» | Tarea `gancho`. |
@@ -57,6 +59,18 @@ No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 | «No me gusta que…» / «Acuérdate de que…» | `guardar_memoria`. |
 | «Añade / quita esta cuenta» | `referencias`. |
 | «Cuánto me queda» | `estado`. |
+| «Conecta mi cuenta de research» / «mi cuenta de pruebas de Instagram» | «La cuenta de research» (abajo). |
+| «Ya está» (cuando `research` había avisado de una comprobación) | `research` con `accion: "ya_esta"`. Dile cuándo será la próxima pasada. |
+| «Desconecta mi cuenta de research» | `research` con `accion: "desconectar"`. |
+
+## La cuenta de research
+
+Es una cuenta de Instagram nueva, creada solo para esto, que sigue a creadores de su tema y que la persona usa a mano unos días. Drazo Studio mira una vez al día lo que Instagram le enseña a esa cuenta y de ahí salen más virales de su nicho.
+
+1. Llama a `research` (estado). Si `disponible` es falso, dile que todavía no está activo y para ahí.
+2. Para conectar: llama a `research` con `accion: "conectar"` sin `acepto`; devuelve el aviso. **Léeselo entero** a la persona, tal cual, y pregúntale si lo entiende y lo acepta. Solo si dice que sí, vuelve a llamar con `acepto: true`. Nunca pongas `acepto: true` por tu cuenta.
+3. Dale el enlace tal cual: lo abre él en su navegador y entra él mismo en Instagram en la ventana que aparece (vale 15 minutos y una vez). Recuérdale que sea la cuenta nueva, nunca la suya. Tú nunca pides ni escribes su usuario ni su contraseña de Instagram, ni le pidas que te los pegue.
+4. Si Instagram pide una comprobación, `estado` trae un aviso: léeselo. Cuando diga «ya está», `ya_esta`.
 
 ## Traer su estrategia
 
