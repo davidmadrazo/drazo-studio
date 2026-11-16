@@ -118,7 +118,7 @@ test("las 22 herramientas, cada una a su ruta y con las tres cabeceras", async (
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.2.0")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.2.1")
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })
