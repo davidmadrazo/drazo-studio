@@ -36,7 +36,7 @@ Si no ves las herramientas `drazo-studio` (o la app te avisa de que ese servidor
 Hazla conversando, un paso cada vez.
 
 1. **Su cuenta**: cuál es su Instagram (`handle_propio`, con `guardar_marca`). La licencia queda unida a esa cuenta.
-2. **Su panel**: llama a `panel` y dale el enlace y el código. Dile que puede instalarlo como app en el móvil y en el ordenador.
+2. **Su panel**: se abre siempre desde Hazlo Viral, en la pestaña «Drazo Studio». Llama a `panel` y dale el enlace a la comunidad. Si quiere tenerlo como app, la app que se instala es la de Hazlo Viral, desde dentro de la comunidad: Drazo Studio no se instala aparte.
 3. **Su marca**: la define Drazo Studio, no tú. Si ya la tiene trabajada contigo o en sus ficheros, usa «Traer su estrategia» (abajo). Después, que entre en su panel, en «Tu marca», y pulse «Definir mi marca»: contesta unas preguntas, recibe su propuesta con el porqué y se queda con ella. Comprueba con `marca` que ha quedado completa.
 4. **Sus cuentas de referencia**: al menos 3 cuentas de Instagram de su tema a las que les vaya bien. `referencias` con `anadir`.
 5. **Su Apify**: llama a `conectar` y dale el enlace. Lo abre en el navegador, pega allí su clave y vuelve. Comprueba con `estado` que ha quedado conectado.
@@ -61,7 +61,7 @@ No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 | «Qué historias subo» / «Hazme un carrusel» | Tareas `historias` y `carrusel` (si su plan las lleva). |
 | «Guárdalo para el jueves» | `guardar_propuesta` y luego `programar`. |
 | «Qué tengo que grabar» | `calendario`. |
-| «Abre mi panel» / «quiero ver mi calendario en la web» | `panel` y dale el enlace y el código tal cual. El enlace, para el navegador; el código, para escribirlo en la app instalada o en el móvil. Valen 15 minutos y una vez; ese dispositivo se queda dentro 30 días. |
+| «Abre mi panel» / «quiero ver mi calendario en la web» | `panel` y dale el enlace a Hazlo Viral: el panel se abre siempre desde la comunidad, en la pestaña «Drazo Studio». No hay enlace ni código para entrar de otra forma. |
 | «Trae mi estrategia» / «sube mi marca» / «usa lo que ya sabes de mí» | «Traer su estrategia» (abajo). |
 | «Configura mi marca» / «quiero cambiar mi marca» | Su panel, «Tu marca», «Definir mi marca». Tú no la redactas. |
 | «Cómo van mis vídeos» | `cifras`. |

@@ -127,7 +127,7 @@ export const HERRAMIENTAS = [
   },
   {
     name: "panel",
-    description: "Te da un enlace y un código para abrir tu panel de Drazo Studio (tu semana de virales, tus guardados, tu calendario, tu marca y tu cuenta). El enlace se abre en el navegador; el código se escribe en la app instalada o en el móvil. Valen 15 minutos y una sola vez; ese dispositivo se queda con la sesión abierta 30 días.",
+    description: "Te dice cómo abrir tu panel de Drazo Studio (tu semana de virales, tus guardados, tu calendario, tu marca y tu cuenta): siempre desde Hazlo Viral, en la pestaña «Drazo Studio». Devuelve el enlace a la comunidad.",
     inputSchema: { type: "object", properties: {} },
   },
   {
