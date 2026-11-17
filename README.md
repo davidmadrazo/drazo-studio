@@ -51,6 +51,8 @@ tus primeros virales estudiados.
 | «Guárdalo para el jueves» | Queda en tu calendario |
 | «Acuérdate de que…» | Una regla tuya que se tiene en cuenta siempre |
 | «Cuánto me queda» | Lo que llevas usado de tu plan |
+| «Diséñame la oferta», «hazme la bio», «planea mi lanzamiento» | Tu experto de ventas (plan completo) |
+| Pegas el chat con un cliente | Qué contestarle, con el mensaje listo para pegar |
 
 ## Tu licencia
 

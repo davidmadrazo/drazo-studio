@@ -243,6 +243,18 @@ export const HERRAMIENTAS = [
     },
   },
   {
+    name: "ventas_contexto",
+    description: "El experto de ventas: pide su método ANTES de contestar sobre vender. Enfoque vender (oferta, precio, lanzamiento, qué contestar a un cliente, objeciones, llamadas, clientes que se van), embudo (del vídeo a la venta, lista, grupo, reto o clase abierta, casos de éxito) o perfil (bio, enlace, destacadas, historias que venden). Si la pregunta toca dos, abre los dos. Dentro de la conversación se itera sin volver a abrirlo. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de contestar.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        enfoque: { type: "string", enum: ["vender", "embudo", "perfil"] },
+        parte: { type: "integer", minimum: 1, maximum: 12 },
+      },
+      required: ["enfoque"],
+    },
+  },
+  {
     name: "puntuar_idea",
     description: "Pone nota a una idea de vídeo (una frase) y dice qué criterios cumple. Cuenta en el plan de la persona.",
     inputSchema: {
@@ -361,6 +373,10 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
       return [{ type: "text", text: contexto }, { type: "text", text: comoTexto(resto) }]
     }
     case "metodo_verificar": return comoTexto(await pedir("POST", "/metodo-verificar", a))
+    case "ventas_contexto": {
+      const { contexto, ...resto } = await pedir("POST", "/ventas-contexto", a)
+      return [{ type: "text", text: contexto }, { type: "text", text: comoTexto(resto) }]
+    }
     case "puntuar_idea": return comoTexto(await pedir("POST", "/puntuar-idea", a))
     case "guardar_propuesta": return comoTexto(await pedir("POST", "/propuesta", a))
     case "programar": return comoTexto(await pedir("POST", "/programar", a))

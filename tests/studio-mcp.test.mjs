@@ -97,6 +97,7 @@ const TABLA = [
   ["guardar_enlace", { url: "https://www.instagram.com/reel/ABC/" }, "POST", "/enlace"],
   ["metodo_contexto", { tarea: "guion", parte: 2 }, "POST", "/metodo-contexto"],
   ["metodo_verificar", { ids: ["GUI-001"], texto: "texto" }, "POST", "/metodo-verificar"],
+  ["ventas_contexto", { enfoque: "vender", parte: 2 }, "POST", "/ventas-contexto"],
   ["guardar_propuesta", { gancho: "gancho" }, "POST", "/propuesta"],
   ["programar", { brief_id: "b1", fecha: null }, "POST", "/programar"],
   ["calendario", { estado: "new", limite: 5 }, "GET", "/calendario"],
@@ -105,11 +106,11 @@ const TABLA = [
   ["guardar_memoria", { texto: "nota" }, "POST", "/memoria"],
 ]
 
-test("las 22 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
+test("las 23 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
   recibidas.length = 0
   const [lista, ...resultados] = await sesion([["tools/list", {}], ...TABLA.map(([nombre, argumentos]) => llamar(nombre, argumentos))])
   const nombres = lista.result.tools.map((h) => h.name)
-  assert.equal(nombres.length, 22)
+  assert.equal(nombres.length, 23)
   assert.deepEqual([...new Set(TABLA.map(([nombre]) => nombre)), "puntuar_idea"].sort(), [...nombres].sort())
   assert.equal(recibidas.length, TABLA.length)
   TABLA.forEach(([nombre, argumentos, metodo, ruta], i) => {
@@ -118,7 +119,7 @@ test("las 22 herramientas, cada una a su ruta y con las tres cabeceras", async (
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.2.1")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.3.0")
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })
@@ -184,12 +185,23 @@ test("el plugin es solo un mando a distancia: ni restos de la versión instalada
   const todos = ficheros(raiz)
   assert.deepEqual(todos.map((f) => path.relative(raiz, f).replaceAll("\\", "/")).sort(), [
     ".claude-plugin/plugin.json", ".mcp.json", "scripts/mcp-comun.mjs", "scripts/mcp-drazo-studio.mjs", "skills/drazo-studio/SKILL.md",
+    "skills/experto-de-ventas/SKILL.md",
   ])
   const texto = todos.map((f) => readFileSync(f, "utf8")).join("\n")
   for (const resto of ["INSTANCIA_", "reel-local", "ver_reel", "x-instancia-token", "child_process", "yt-dlp", "whisper"]) assert.ok(!texto.includes(resto), resto)
   // Ningún código de regla del canon ni la política del servidor en lo que se instala en el ordenador del miembro
   assert.ok(!/\b(SIS|ALG|MET|CUE|IDE|GAN|GUI|FOR|EDI|HIS|PUB|EMB|VEN)-\d{3}\b/.test(texto))
   assert.ok(!texto.includes("CÓMO RESPONDES") && !texto.includes("CÓMO SE ENTREGA"))
+})
+
+test("el experto de ventas se activa con lo de vender, pide su método al servidor y no envía nada", () => {
+  const skill = readFileSync(path.join(raiz, "skills", "experto-de-ventas", "SKILL.md"), "utf8")
+  const descripcion = skill.split("\n").find((linea) => linea.startsWith("description:"))
+  for (const frase of [/oferta/, /lanzamiento/, /bio/, /qué contestar a un cliente/, /me lo pienso/]) assert.match(descripcion, frase)
+  assert.match(skill, /`ventas_contexto`/)
+  assert.match(skill, /Nunca envías nada/)
+  assert.ok(!/canon/i.test(skill))
+  assert.match(readFileSync(path.join(raiz, "skills", "drazo-studio", "SKILL.md"), "utf8"), /experto-de-ventas/)
 })
 
 test("«utiliza el método Drazo» activa el skill y en lo instalado no aparece la palabra canon", () => {

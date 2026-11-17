@@ -29,7 +29,7 @@ Si no ves las herramientas `drazo-studio` (o la app te avisa de que ese servidor
 1. Llama a `estado`.
 2. Si hay `pasos_pendientes`, haz el alta (abajo), un paso cada vez.
 3. Si no, llama a `semana` y enséñale sus virales de la semana en una lista numerada: cuenta, visitas, cuántas veces supera lo normal y, en una frase, por qué funcionó. Pregúntale con cuál quiere trabajar.
-4. Si `estado` trae un `aviso` o una `novedad`, díselo en una línea.
+4. Si `estado` trae un `aviso` o una `novedad`, díselo en una línea. Si trae `actualizar`, ofrécete a hacerlo tú con esas órdenes.
 
 ## Alta (la primera vez)
 
@@ -68,6 +68,8 @@ No inventes nada de su marca: lo que no te haya dicho, pregúntalo.
 | «No me gusta que…» / «Acuérdate de que…» | `guardar_memoria`. |
 | «Añade / quita esta cuenta» | `referencias`. |
 | «Cuánto me queda» | `estado`. |
+| Algo de vender: su oferta, el precio, un lanzamiento, su bio, qué contestar a un cliente | Su experto de ventas (la skill `experto-de-ventas`). |
+| «Actualiza Drazo Studio» | Ejecuta `claude plugin marketplace update drazo-studio` y después `claude plugin update drazo-studio@drazo-studio`. Cuando acaben, dile que cierre la app de Claude del todo y la vuelva a abrir. |
 | «Conecta mi cuenta de research» / «mi cuenta de pruebas de Instagram» | «La cuenta de research» (abajo). |
 | «Ya está» (cuando `research` había avisado de una comprobación) | `research` con `accion: "ya_esta"`. Dile cuándo será la próxima pasada. |
 | «Desconecta mi cuenta de research» | `research` con `accion: "desconectar"`. |
