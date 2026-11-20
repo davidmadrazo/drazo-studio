@@ -30,6 +30,18 @@ function licenciaActual() {
   return !valor || valor.startsWith("${") ? "" : valor
 }
 
+const esClaveCuenta = (licencia) => licencia.startsWith("drzc_")
+
+/** La marca de esta conversación (una por proceso, que es una por conversación): su nombre corto en la cuenta. */
+let marcaActual = null
+
+const MENSAJE_UNA_MARCA = "Tu licencia es de una sola marca."
+const ESTADO_MARCA = {
+  pausada: (nombre) => `La marca ${nombre} no está activa: o todavía no ha empezado o está pausada hasta que se pague su cuota. Lo tienes en «Tu cuenta» del panel.`,
+  de_baja: (nombre) => `La marca ${nombre} está de baja. Si quieres recuperarla, dala de alta otra vez desde «Tu cuenta».`,
+  suspendida: (nombre) => `La marca ${nombre} está suspendida. Escríbenos para revisarla.`,
+}
+
 function carpetaDatos() {
   const propia = (process.env.DRAZO_STUDIO_DATOS ?? "").trim()
   return propia || join(homedir(), ".drazo-studio")
@@ -63,7 +75,7 @@ export function compararVersiones(a, b) {
   return 0
 }
 
-async function pedir(metodo, ruta, cuerpo, tiempoMs = 120_000) {
+async function pedir(metodo, ruta, cuerpo, tiempoMs = 120_000, { conMarca = true } = {}) {
   const licencia = licenciaActual()
   if (!licencia) throw new Error(MENSAJE_SIN_LICENCIA)
   const llevaCuerpo = cuerpo !== undefined && cuerpo !== null
@@ -75,6 +87,7 @@ async function pedir(metodo, ruta, cuerpo, tiempoMs = 120_000) {
         "x-drazo-licencia": licencia,
         "x-drazo-instalacion": idInstalacion(),
         "x-drazo-plugin": VERSION,
+        ...(conMarca && marcaActual && esClaveCuenta(licencia) ? { "x-drazo-marca": marcaActual } : {}),
         ...(llevaCuerpo ? { "Content-Type": "application/json" } : {}),
       },
       ...(llevaCuerpo ? { body: JSON.stringify(cuerpo) } : {}),
@@ -106,7 +119,7 @@ const consulta = (valores) => {
 export const HERRAMIENTAS = [
   {
     name: "estado",
-    description: "Te dice cómo va tu cuenta de Drazo Studio: qué plan tienes, cuánto llevas usado este mes y qué pasos te faltan por hacer.",
+    description: "Te dice cómo va tu cuenta de Drazo Studio: qué plan tienes, cuánto llevas usado este mes y qué pasos te faltan por hacer. En una cuenta con varias marcas, dice también con cuál se trabaja.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -127,8 +140,22 @@ export const HERRAMIENTAS = [
   },
   {
     name: "panel",
-    description: "Te dice cómo abrir tu panel de Drazo Studio (tu semana de virales, tus guardados, tu calendario, tu marca y tu cuenta): siempre desde Hazlo Viral, en la pestaña «Drazo Studio». Devuelve el enlace a la comunidad.",
+    description: "Abre tu panel de Drazo Studio (tu semana de virales, tus guardados, tu calendario, tu marca y tu cuenta). Devuelve lo que hace falta para entrar: sigue lo que devuelva.",
     inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "marcas",
+    description: "Las marcas de tu cuenta de Drazo Studio, con su estado y la marca con la que se trabaja ahora. Si tu licencia es de una sola marca, lo dice sin más.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "usar_marca",
+    description: "Elige la marca con la que trabajas en esta conversación (solo para cuentas con varias marcas): por su nombre corto, su nombre o su Instagram. Desde ahí, todo lo demás va a esa marca.",
+    inputSchema: {
+      type: "object",
+      properties: { marca: { type: "string", description: "El nombre corto, el nombre o el Instagram de la marca." } },
+      required: ["marca"],
+    },
   },
   {
     name: "marca",
@@ -144,6 +171,7 @@ export const HERRAMIENTAS = [
         nombre: { type: "string" },
         handle_propio: { type: "string" },
         nichos: { type: "array", items: { type: "string" } },
+        respuestas: { type: "object", additionalProperties: { type: "string" }, description: "Las respuestas del cuestionario de la marca, por el id de cada pregunta." },
         bible: { type: "object" },
         pilares: {
           type: "array",
@@ -218,11 +246,11 @@ export const HERRAMIENTAS = [
   },
   {
     name: "metodo_contexto",
-    description: "Pide el método de una tarea ANTES de escribir: ideas, ganchos, guion, corrección de guion, historias o carrusel. Cada apertura cuenta en el plan de la persona; dentro de la conversación se itera sin volver a abrirla. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de empezar. Con viral_id entra el viral que quiere replicar.",
+    description: "Pide el método de una tarea ANTES de escribir: ideas, ganchos, guion, corrección de guion, historias, carrusel o, en una marca de agencia, la definición de su marca (marca). Cada apertura cuenta en el plan de la persona; dentro de la conversación se itera sin volver a abrirla. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de empezar. Con viral_id entra el viral que quiere replicar.",
     inputSchema: {
       type: "object",
       properties: {
-        tarea: { type: "string", enum: ["idea", "gancho", "guion", "corregir_guion", "historias", "carrusel"] },
+        tarea: { type: "string", enum: ["idea", "gancho", "guion", "corregir_guion", "historias", "carrusel", "marca"] },
         viral_id: { type: "string" },
         max_ejemplos: { type: "integer", minimum: 0, maximum: 12 },
         parte: { type: "integer", minimum: 1, maximum: 12 },
@@ -244,7 +272,7 @@ export const HERRAMIENTAS = [
   },
   {
     name: "ventas_contexto",
-    description: "El experto de ventas: pide su método ANTES de contestar sobre vender. Enfoque vender (oferta, precio, lanzamiento, qué contestar a un cliente, objeciones, llamadas, clientes que se van), embudo (del vídeo a la venta, lista, grupo, reto o clase abierta, casos de éxito) o perfil (bio, enlace, destacadas, historias que venden). Si la pregunta toca dos, abre los dos. Dentro de la conversación se itera sin volver a abrirlo. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de contestar.",
+    description: "El experto de ventas: pide su método ANTES de contestar sobre vender. Enfoque vender (oferta, precio, lanzamiento, qué contestar a un cliente, objeciones, llamadas, clientes que se van), embudo (del vídeo a la venta, lista, grupo o clase abierta, casos de éxito) o perfil (bio, enlace, destacadas, historias que venden). Si la pregunta toca dos, abre los dos. Dentro de la conversación se itera sin volver a abrirlo. Si la respuesta dice que hay más partes, pídelas con parte 2, 3… antes de contestar.",
     inputSchema: {
       type: "object",
       properties: {
@@ -333,7 +361,7 @@ export const HERRAMIENTAS = [
   },
   {
     name: "mi_version",
-    description: "Pide a Drazo Studio el guion ya hecho de la versión de la persona de un vídeo de su banco. Solo existe en el Reto de 30 días y el vídeo tiene que estar ya estudiado (por su id de semana o por su enlace). Antes de llamarla, hazle tres preguntas cortas y opcionales: qué va a enseñar suyo, qué cifra o resultado real puede dar y a qué quiere llevar al final; pasa sus respuestas tal cual en que_ensenas, cifra y destino. Tarda un par de minutos. El guion queda guardado en su calendario, sin fecha: entrégaselo tal cual, sin reescribirlo ni añadir consejos tuyos. Para pedir un cambio sobre un guion ya hecho, pasa su brief_id y lo que quiere cambiar en cambio.",
+    description: "Pide a Drazo Studio el guion ya hecho de la versión de la persona de un vídeo de su banco. Solo existe en los planes que lo llevan (si el tuyo no, el servidor lo dice) y el vídeo tiene que estar ya estudiado (por su id de semana o por su enlace). Antes de llamarla, hazle tres preguntas cortas y opcionales: qué va a enseñar suyo, qué cifra o resultado real puede dar y a qué quiere llevar al final; pasa sus respuestas tal cual en que_ensenas, cifra y destino. Tarda un par de minutos. El guion queda guardado en su calendario, sin fecha: entrégaselo tal cual, sin reescribirlo ni añadir consejos tuyos. Para pedir un cambio sobre un guion ya hecho, pasa su brief_id y lo que quiere cambiar en cambio.",
     inputSchema: {
       type: "object",
       properties: {
@@ -348,6 +376,54 @@ export const HERRAMIENTAS = [
     },
   },
 ]
+
+const sinAcentos = (texto) => String(texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
+const sinArroba = (texto) => sinAcentos(texto).replace(/^@+/, "")
+
+function lineaDeMarca(marca) {
+  const partes = [`${marca.nombre} (${marca.slug})`]
+  if (marca.instagram) partes.push(`@${String(marca.instagram).replace(/^@+/, "")}`)
+  partes.push(marca.estado ?? "activa")
+  if (marca.baja_el) partes.push(`de baja el ${marca.baja_el}`)
+  return `- ${partes.join(" · ")}`
+}
+
+async function listarMarcas() {
+  if (!esClaveCuenta(licenciaActual())) {
+    if (!licenciaActual()) throw new Error(MENSAJE_SIN_LICENCIA)
+    return MENSAJE_UNA_MARCA
+  }
+  const datos = await pedir("GET", "/marcas")
+  const marcas = datos.marcas ?? []
+  const actual = datos.actual ?? marcaActual
+  const elegida = marcas.find((m) => m.slug === actual)
+  return [
+    datos.cuenta?.nombre ? `Cuenta: ${datos.cuenta.nombre}` : "Tu cuenta:",
+    marcas.length ? marcas.map(lineaDeMarca).join("\n") : "Todavía no tiene ninguna marca.",
+    elegida ? `Marca actual: ${elegida.nombre} (${elegida.slug}).` : "Ninguna marca elegida todavía: dime con cuál trabajamos y la elijo con usar_marca.",
+  ].join("\n")
+}
+
+async function elegirMarca(buscada) {
+  const licencia = licenciaActual()
+  if (!licencia) throw new Error(MENSAJE_SIN_LICENCIA)
+  if (!esClaveCuenta(licencia)) return MENSAJE_UNA_MARCA
+  const pedida = sinAcentos(buscada)
+  if (!pedida) throw new Error("Dime con qué marca quieres trabajar.")
+  const { marcas = [] } = await pedir("GET", "/marcas", undefined, undefined, { conMarca: false })
+  const arroba = sinArroba(buscada)
+  const coinciden = marcas.filter((m) => sinAcentos(m.slug) === pedida || sinAcentos(m.nombre) === pedida || (m.instagram && sinArroba(m.instagram) === arroba))
+  if (coinciden.length !== 1) {
+    const lista = marcas.length ? marcas.map(lineaDeMarca).join("\n") : "Tu cuenta todavía no tiene ninguna marca."
+    const motivo = coinciden.length ? "Hay varias marcas que encajan con eso" : "Esa marca no está en tu cuenta"
+    return `${motivo}. Tus marcas:\n${lista}\nNo he cambiado nada: dime cuál de ellas.`
+  }
+  const [marca] = coinciden
+  marcaActual = marca.slug
+  const normal = !marca.estado || marca.estado === "activa" || marca.estado === "baja_programada"
+  const aviso = normal ? null : (ESTADO_MARCA[marca.estado]?.(marca.nombre) ?? `Su estado es ${marca.estado}.`)
+  return [`Ahora trabajamos con ${marca.nombre}.`, aviso].filter(Boolean).join(" ")
+}
 
 export async function ejecutarHerramienta(nombre, argumentos = {}) {
   const a = argumentos ?? {}
@@ -364,6 +440,8 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
       if (accion === "ya_esta" || accion === "desconectar") return comoTexto(await pedir("POST", "/research", { accion }))
       throw new Error("La acción de research tiene que ser estado, conectar, ya_esta o desconectar.")
     }
+    case "marcas": return await listarMarcas()
+    case "usar_marca": return await elegirMarca(a.marca)
     case "panel": return comoTexto(await pedir("POST", "/panel", {}))
     case "material_marca": return comoTexto(await pedir("POST", "/material-marca", { texto: argumentos.texto }))
     case "marca": return comoTexto(await pedir("GET", "/marca"))

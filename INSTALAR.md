@@ -1,6 +1,6 @@
 # Instalar Drazo Studio: instrucciones para Claude
 
-Este documento es para ti, Claude. Un miembro de Hazlo Viral te ha pegado este enlace y su licencia de Drazo Studio (empieza por `drz_`). Lo instalas tú con tus herramientas; la persona solo acepta los permisos que le pidas.
+Este documento es para ti, Claude. Una persona te ha pegado este enlace y su licencia de Drazo Studio (empieza por `drz_`, o por `drzc_` si es una cuenta con varias marcas). Lo instalas tú con tus herramientas; la persona solo acepta los permisos que le pidas.
 
 Si lo has leído con una herramienta que resume, descárgalo entero con la terminal y léelo completo antes de empezar.
 
@@ -51,7 +51,7 @@ Dile, con estas palabras o parecidas:
 
 > Ya está instalado. Cierra la app de Claude del todo y vuelve a abrirla. Después escríbeme: **Hola Drazo Studio**.
 
-A partir de ahí te guía el propio Drazo Studio: le pregunta cuál es su Instagram, le abre su panel (que puede instalar como app en el móvil y en el ordenador), define su marca en el panel contestando unas preguntas, le pide sus cuentas de referencia y le da un enlace para conectar su Apify (la cuenta gratis vale). En unos minutos tiene sus primeros virales estudiados.
+A partir de ahí te guía el propio Drazo Studio: le pregunta cuál es su Instagram, le abre su panel, define su marca contestando unas preguntas (en una cuenta con varias marcas, te pregunta con qué cliente se trabaja), le pide sus cuentas de referencia y le da un enlace para conectar su Apify (la cuenta gratis vale). En unos minutos tiene sus primeros virales estudiados.
 
 ## Si ya lo tenía instalado
 

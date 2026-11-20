@@ -1,6 +1,6 @@
 # Drazo Studio
 
-Drazo Studio es el sistema de contenido de Hazlo Viral, dentro de Claude Code. Cada semana estudia los vídeos
+Drazo Studio es un sistema de contenido para Instagram, dentro de Claude Code. Cada semana estudia los vídeos
 virales de las cuentas que tú eliges y te los deja explicados. Con eso le pides a tu Claude ideas, ganchos y
 guiones para tu marca, y te los guarda en tu calendario.
 
@@ -9,8 +9,8 @@ instala ninguna aplicación ni se guarda nada del sistema.
 
 ## Qué necesitas
 
-- **Tu licencia de Drazo Studio.** Empieza por `drz_` y te llega al entrar en Hazlo Viral. Sin licencia, el
-  plugin no hace nada.
+- **Tu licencia de Drazo Studio.** Empieza por `drz_` (una marca) o por `drzc_` (una cuenta con
+  varias marcas) y te llega por correo. Sin licencia, el plugin no hace nada.
 - **Claude Code** con una suscripción de pago a Claude.
 - **Node.js 24** en tu ordenador. Si no lo tienes, pídeselo a tu Claude: «instálame Node.js 24».
 - **Una cuenta de Apify.** Vale la gratuita. Drazo Studio lee tus cuentas de referencia con ella.
@@ -51,12 +51,13 @@ tus primeros virales estudiados.
 | «Guárdalo para el jueves» | Queda en tu calendario |
 | «Acuérdate de que…» | Una regla tuya que se tiene en cuenta siempre |
 | «Cuánto me queda» | Lo que llevas usado de tu plan |
-| «Diséñame la oferta», «hazme la bio», «planea mi lanzamiento» | Tu experto de ventas (plan completo) |
+| «Diséñame la oferta», «hazme la bio», «planea mi lanzamiento» | Tu experto de ventas (si tu plan lo lleva) |
 | Pegas el chat con un cliente | Qué contestarle, con el mensaje listo para pegar |
+| «Ahora con el cliente X», «¿con qué marcas trabajo?» | Solo en cuentas con varias marcas: eliges con cuál trabajas |
 
 ## Tu licencia
 
-Una licencia vale para una persona, una marca y un ordenador. Si cambias de ordenador, escríbenos y la liberamos.
+Una licencia `drz_` vale para una persona, una marca y un ordenador. Una cuenta `drzc_` lleva varias marcas, también en un solo ordenador. Si cambias de ordenador, escríbenos y la liberamos.
 No la compartas: si se usa desde dos sitios a la vez, se pausa.
 
 ## Ayuda
