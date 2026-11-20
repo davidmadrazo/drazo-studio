@@ -30,6 +30,7 @@ before(async () => {
     const enviar = (estado, valor) => { respuesta.writeHead(estado, { "Content-Type": "application/json" }); respuesta.end(JSON.stringify(valor)) }
     if (url.pathname === "/api/studio/viral") return enviar(200, { id: "v1", transcripcion: "hola", hojas: [{ mime: "image/jpeg", base64: HOJA }, { mime: "image/jpeg", base64: HOJA }] })
     if (url.pathname === "/api/studio/metodo-contexto") return enviar(200, { contexto: "EL MÉTODO DE LA TAREA", parte: 1, partes: 2, siguiente: "Falta leer más" })
+    if (url.pathname === "/api/studio/version" || url.pathname === "/api/studio/version-ajuste") return enviar(200, { ok: true, brief_id: "b1", guion: { original: "x" } })
     if (url.pathname === "/api/studio/puntuar-idea") return enviar(429, { error: "cupo_agotado", mensaje: "Has usado las 20 ideas con nota de tu Reto." })
     return enviar(200, { ok: true, recurso: url.pathname })
   })
@@ -104,13 +105,15 @@ const TABLA = [
   ["cifras", {}, "GET", "/cifras"],
   ["memoria", {}, "GET", "/memoria"],
   ["guardar_memoria", { texto: "nota" }, "POST", "/memoria"],
+  ["mi_version", { viral_id: "5b2f2a5e-0c1d-4d57-9a53-2f6a6f0c9a11" }, "POST", "/version"],
+  ["mi_version", { brief_id: "5b2f2a5e-0c1d-4d57-9a53-2f6a6f0c9a12", cambio: "Que el cierre hable de mi oferta." }, "POST", "/version-ajuste"],
 ]
 
-test("las 23 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
+test("las 24 herramientas, cada una a su ruta y con las tres cabeceras", async () => {
   recibidas.length = 0
   const [lista, ...resultados] = await sesion([["tools/list", {}], ...TABLA.map(([nombre, argumentos]) => llamar(nombre, argumentos))])
   const nombres = lista.result.tools.map((h) => h.name)
-  assert.equal(nombres.length, 23)
+  assert.equal(nombres.length, 24)
   assert.deepEqual([...new Set(TABLA.map(([nombre]) => nombre)), "puntuar_idea"].sort(), [...nombres].sort())
   assert.equal(recibidas.length, TABLA.length)
   TABLA.forEach(([nombre, argumentos, metodo, ruta], i) => {
@@ -119,7 +122,7 @@ test("las 23 herramientas, cada una a su ruta y con las tres cabeceras", async (
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.3.1")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.4.0")
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })
@@ -209,4 +212,25 @@ test("«utiliza el método Drazo» activa el skill y en lo instalado no aparece 
   const descripcion = skill.split("\n").find((linea) => linea.startsWith("description:"))
   assert.match(descripcion, /utiliza el método Drazo/)
   assert.match(skill, /\| «Utiliza el método Drazo»/)
+})
+
+test("mi_version: con el vídeo manda solo las respuestas que vienen; con brief_id y cambio, solo esos dos", async () => {
+  recibidas.length = 0
+  const [lista, ...resultados] = await sesion([
+    ["tools/list", {}],
+    llamar("mi_version", { url: "https://www.instagram.com/reel/ABC/", que_ensenas: "Mi panel", destino: "Escríbeme PLAZA" }),
+    llamar("mi_version", { viral_id: "v1", cifra: "12 clientes", brief_id: "b1" }),
+    llamar("mi_version", { brief_id: "b1", cambio: "Más corto y sin cifras inventadas.", cifra: "ignorada" }),
+    llamar("mi_version", {}),
+  ])
+  assert.ok(lista.result.tools.some((h) => h.name === "mi_version"))
+  assert.equal(recibidas.length, 3)
+  assert.equal(recibidas[0].ruta, "/api/studio/version")
+  assert.deepEqual(recibidas[0].cuerpo, { url: "https://www.instagram.com/reel/ABC/", respuestas: { que_ensenas: "Mi panel", destino: "Escríbeme PLAZA" } })
+  assert.equal(recibidas[1].ruta, "/api/studio/version")
+  assert.deepEqual(recibidas[1].cuerpo, { viral_id: "v1", respuestas: { cifra: "12 clientes" } })
+  assert.equal(recibidas[2].ruta, "/api/studio/version-ajuste")
+  assert.deepEqual(recibidas[2].cuerpo, { brief_id: "b1", cambio: "Más corto y sin cifras inventadas." })
+  assert.ok(!resultados[0].result.isError && !resultados[2].result.isError)
+  assert.equal(resultados[3].result.isError, true)
 })

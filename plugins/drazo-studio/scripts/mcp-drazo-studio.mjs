@@ -331,6 +331,22 @@ export const HERRAMIENTAS = [
       },
     },
   },
+  {
+    name: "mi_version",
+    description: "Pide a Drazo Studio el guion ya hecho de la versión de la persona de un vídeo de su banco. Solo existe en el Reto de 30 días y el vídeo tiene que estar ya estudiado (por su id de semana o por su enlace). Antes de llamarla, hazle tres preguntas cortas y opcionales: qué va a enseñar suyo, qué cifra o resultado real puede dar y a qué quiere llevar al final; pasa sus respuestas tal cual en que_ensenas, cifra y destino. Tarda un par de minutos. El guion queda guardado en su calendario, sin fecha: entrégaselo tal cual, sin reescribirlo ni añadir consejos tuyos. Para pedir un cambio sobre un guion ya hecho, pasa su brief_id y lo que quiere cambiar en cambio.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        viral_id: { type: "string", description: "El id del viral (el de semana)." },
+        url: { type: "string", description: "El enlace del vídeo, si no se usa el id." },
+        que_ensenas: { type: "string", description: "Qué va a enseñar de suyo en el vídeo." },
+        cifra: { type: "string", description: "Qué cifra o resultado real puede dar." },
+        destino: { type: "string", description: "A qué quiere llevar a quien lo vea, al final." },
+        brief_id: { type: "string", description: "El guion ya hecho sobre el que pide un cambio." },
+        cambio: { type: "string", description: "Lo que quiere cambiar, de 10 a 1000 caracteres." },
+      },
+    },
+  },
 ]
 
 export async function ejecutarHerramienta(nombre, argumentos = {}) {
@@ -376,6 +392,13 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
     case "ventas_contexto": {
       const { contexto, ...resto } = await pedir("POST", "/ventas-contexto", a)
       return [{ type: "text", text: contexto }, { type: "text", text: comoTexto(resto) }]
+    }
+    case "mi_version": {
+      if (a.brief_id && a.cambio) return comoTexto(await pedir("POST", "/version-ajuste", { brief_id: a.brief_id, cambio: a.cambio }, 300_000))
+      if (!a.viral_id && !a.url) throw new Error("Indica el id del viral o su enlace.")
+      const respuestas = {}
+      for (const campo of ["que_ensenas", "cifra", "destino"]) if (a[campo]) respuestas[campo] = a[campo]
+      return comoTexto(await pedir("POST", "/version", { ...(a.viral_id ? { viral_id: a.viral_id } : { url: a.url }), ...(Object.keys(respuestas).length ? { respuestas } : {}) }, 300_000))
     }
     case "puntuar_idea": return comoTexto(await pedir("POST", "/puntuar-idea", a))
     case "guardar_propuesta": return comoTexto(await pedir("POST", "/propuesta", a))
