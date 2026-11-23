@@ -114,8 +114,9 @@ Es una cuenta de Instagram nueva, creada solo para esto, que sigue a creadores d
 
 1. Llama a `research` (estado). Si `disponible` es falso, dile que todavía no está activo y para ahí.
 2. Para conectar: llama a `research` con `accion: "conectar"` sin `acepto`; devuelve el aviso. **Léeselo entero** a la persona, tal cual, y pregúntale si lo entiende y lo acepta. Solo si dice que sí, vuelve a llamar con `acepto: true`. Nunca pongas `acepto: true` por tu cuenta.
-3. Dale el enlace tal cual: lo abre él en su navegador y entra él mismo en Instagram en la ventana que aparece (vale 15 minutos y una vez). Recuérdale que sea la cuenta nueva, nunca la suya. Tú nunca pides ni escribes su usuario ni su contraseña de Instagram, ni le pidas que te los pegue.
-4. Si Instagram pide una comprobación, `estado` trae un aviso: léeselo. Cuando diga «ya está», `ya_esta`.
+3. Antes de llamar con `acepto: true`, dile lo que va a pasar: en su ordenador se abre una ventana de Chrome aparte (a veces sale detrás de esta), entra ahí con la cuenta de research y el código si Instagram se lo pide, no la cierra, y se cierra sola cuando ha entrado. Tiene 15 minutos. Que tenga a mano la contraseña de esa cuenta y el móvil o el correo del código, y que si Instagram le avisa de un inicio de sesión pulse que fue él. Recuérdale que sea la cuenta nueva, nunca la suya. Tú nunca pides ni escribes su usuario ni su contraseña de Instagram, ni le pidas que te los pegue.
+4. La llamada espera a que entre. Al acabar, cuéntale lo que diga `instrucciones`: si está conectada, que la primera pasada es en unas horas; si no, el paso que falta (código, passkey, comprobación, instalar Chrome). Si pide reintentar, vuelve a llamar con `acepto: true` cuando diga que está listo.
+5. Si Instagram pide una comprobación, `estado` trae un aviso: léeselo. Cuando diga «ya está», `ya_esta`.
 
 ## Traer su estrategia
 

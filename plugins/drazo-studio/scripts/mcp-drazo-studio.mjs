@@ -1,6 +1,7 @@
 // Servidor MCP local de Drazo Studio 3.x: un mando a distancia. Cada herramienta hace una petición HTTP al
-// servidor de Drazo Studio con la licencia del miembro y devuelve la respuesta. No ejecuta nada más en su
-// ordenador. Entorno: DRAZO_LICENCIA y DRAZO_SERVIDOR (los pone el plugin).
+// servidor de Drazo Studio con la licencia del miembro y devuelve la respuesta. Lo único que hace en su ordenador es,
+// al conectar la cuenta de research, abrir una ventana de Chrome aparte para que entre en Instagram
+// (conector-research.mjs). Entorno: DRAZO_LICENCIA y DRAZO_SERVIDOR (los pone el plugin).
 
 import { randomUUID } from "node:crypto"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -8,6 +9,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 
+import { buscarNavegador, conectarDesdeElOrdenador, resultadoDe } from "./conector-research.mjs"
 import { servirStdio } from "./mcp-comun.mjs"
 
 const VERSION = JSON.parse(readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url), "utf8")).version
@@ -129,7 +131,7 @@ export const HERRAMIENTAS = [
   },
   {
     name: "research",
-    description: "La cuenta de research: una cuenta de Instagram nueva, creada solo para esto, con la que Drazo Studio mira una vez al día lo que Instagram le enseña y saca más virales de su nicho. Con accion estado (por defecto) dice cómo va; con conectar da un enlace de un solo uso para que la persona entre ella misma en Instagram (exige acepto: true, y antes hay que leerle el aviso entero y que diga que sí; sin acepto devuelve el aviso); con ya_esta reanuda tras una comprobación de Instagram; con desconectar la retira.",
+    description: "La cuenta de research: una cuenta de Instagram nueva, creada solo para esto, con la que Drazo Studio mira una vez al día lo que Instagram le enseña y saca más virales de su nicho. Con accion estado (por defecto) dice cómo va; con ya_esta reanuda tras una comprobación de Instagram; con desconectar la retira. Con conectar la persona entra en Instagram desde su propio ordenador: exige acepto: true, y antes hay que leerle el aviso entero y que diga que sí (sin acepto devuelve el aviso). Antes de llamar con acepto, dile que se le abrirá una ventana de Chrome aparte (puede salir detrás de esta), que entre ahí con la cuenta de research y el código si se lo pide, que no la cierre y que se cierra sola al terminar; la llamada espera hasta 15 minutos a que entre. No le pidas nunca la contraseña en el chat. Al acabar, cuéntale lo que diga instrucciones.",
     inputSchema: {
       type: "object",
       properties: {
@@ -425,6 +427,29 @@ async function elegirMarca(buscada) {
   return [`Ahora trabajamos con ${marca.nombre}.`, aviso].filter(Boolean).join(" ")
 }
 
+const URL_HTTPS = (valor) => {
+  try { return new URL(valor).protocol === "https:" } catch { return false }
+}
+
+/** Con su Chrome o su Edge, y si no hay ninguno, sin pedir enlace: que lo instale. DRAZO_NAVEGADOR solo para pruebas. */
+async function conectarResearch() {
+  const propio = (process.env.DRAZO_NAVEGADOR ?? "").trim()
+  const navegador = propio === "ninguno" ? null : propio || buscarNavegador()
+  if (!navegador) return resultadoDe("sin_navegador")
+  const { pase } = await pedir("POST", "/research", { accion: "conectar", acepto: true, modo: "ordenador" })
+  if (!pase || !/^[A-Za-z0-9_-]{40,60}$/.test(pase.token ?? "") || !URL_HTTPS(pase.servidor) || !URL_HTTPS(pase.proxy)) {
+    throw new Error("Drazo Studio no ha preparado la conexión. Vuelve a intentarlo en un momento.")
+  }
+  const resultado = await conectarDesdeElOrdenador(pase, { navegador })
+  // Si el envío tardó y se reintentó, el enlace puede verse gastado con la cuenta ya conectada: se mira antes de decirlo
+  if (resultado.motivo === "caducado") {
+    const estado = await pedir("GET", "/research").catch(() => null)
+    const reciente = estado?.estado === "conectada" && Date.now() - Date.parse(estado.conectada_desde ?? "") < 10 * 60 * 1000
+    if (reciente) return resultadoDe("conectada", estado.cuenta ? { cuenta: estado.cuenta } : {})
+  }
+  return resultado
+}
+
 export async function ejecutarHerramienta(nombre, argumentos = {}) {
   const a = argumentos ?? {}
   switch (nombre) {
@@ -435,7 +460,7 @@ export async function ejecutarHerramienta(nombre, argumentos = {}) {
       if (accion === "estado") return comoTexto(await pedir("GET", "/research"))
       if (accion === "conectar") {
         if (a.acepto !== true) return comoTexto({ aviso: AVISO_RESEARCH, instrucciones: "Léele este aviso entero a la persona y pregúntale si lo entiende y lo acepta. Solo si dice que sí, vuelve a llamar con accion conectar y acepto true." })
-        return comoTexto(await pedir("POST", "/research", { accion: "conectar", acepto: true }))
+        return comoTexto(await conectarResearch())
       }
       if (accion === "ya_esta" || accion === "desconectar") return comoTexto(await pedir("POST", "/research", { accion }))
       throw new Error("La acción de research tiene que ser estado, conectar, ya_esta o desconectar.")

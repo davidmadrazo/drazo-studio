@@ -95,7 +95,6 @@ const TABLA = [
   ["estado", {}, "GET", "/estado"],
   ["conectar", {}, "POST", "/conectar"],
   ["research", {}, "GET", "/research"],
-  ["research", { accion: "conectar", acepto: true }, "POST", "/research"],
   ["research", { accion: "ya_esta" }, "POST", "/research"],
   ["research", { accion: "desconectar" }, "POST", "/research"],
   ["panel", {}, "POST", "/panel"],
@@ -137,13 +136,32 @@ test("las 26 herramientas, cada una a su ruta y con las tres cabeceras (y sin ma
     assert.equal(peticion.ruta, `/api/studio${ruta}`, nombre)
     assert.equal(peticion.cabeceras["x-drazo-licencia"], LICENCIA)
     assert.match(peticion.cabeceras["x-drazo-instalacion"], /^[0-9a-f-]{36}$/)
-    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.5.0")
+    assert.equal(peticion.cabeceras["x-drazo-plugin"], "3.6.0")
     assert.equal(peticion.cabeceras["x-drazo-marca"], undefined)
     if (metodo === "POST" && Object.keys(argumentos).length) assert.deepEqual(peticion.cuerpo, argumentos, nombre)
     assert.ok(!resultados[i].result.isError, nombre)
   })
   assert.equal(recibidas[TABLA.findIndex(([n]) => n === "calendario")].consulta, "?estado=new&limite=5")
   assert.equal(recibidas[TABLA.findIndex(([n]) => n === "viral")].consulta, "?id=v1")
+})
+
+test("research conectar sin Chrome ni Edge en el ordenador no pide pase: dice que instale Chrome", async () => {
+  recibidas.length = 0
+  const [respuesta] = await sesion([llamar("research", { accion: "conectar", acepto: true })], { DRAZO_NAVEGADOR: "ninguno" })
+  assert.equal(recibidas.length, 0)
+  const datos = JSON.parse(respuesta.result.content[0].text)
+  assert.equal(datos.conectada, false)
+  assert.equal(datos.motivo, "sin_navegador")
+  assert.match(datos.instrucciones, /Google Chrome/)
+})
+
+test("research conectar con un pase que no encaja no abre nada y avisa", async () => {
+  recibidas.length = 0
+  const [respuesta] = await sesion([llamar("research", { accion: "conectar", acepto: true })], { DRAZO_NAVEGADOR: "C:/no/existe/chrome.exe" })
+  assert.equal(recibidas.length, 1)
+  assert.deepEqual(recibidas[0].cuerpo, { accion: "conectar", acepto: true, modo: "ordenador" })
+  assert.ok(respuesta.result.isError)
+  assert.match(respuesta.result.content[0].text, /no ha preparado la conexión/)
 })
 
 test("research sin acepto no llama al servidor y devuelve el aviso para leérselo a la persona", async () => {
@@ -203,11 +221,15 @@ test("el plugin es solo un mando a distancia: ni restos de la versión instalada
   })
   const todos = ficheros(raiz)
   assert.deepEqual(todos.map((f) => path.relative(raiz, f).replaceAll("\\", "/")).sort(), [
-    ".claude-plugin/plugin.json", ".mcp.json", "scripts/mcp-comun.mjs", "scripts/mcp-drazo-studio.mjs", "skills/drazo-studio/SKILL.md",
-    "skills/experto-de-ventas/SKILL.md",
+    ".claude-plugin/plugin.json", ".mcp.json", "scripts/conector-research.mjs", "scripts/mcp-comun.mjs", "scripts/mcp-drazo-studio.mjs",
+    "skills/drazo-studio/SKILL.md", "skills/experto-de-ventas/SKILL.md",
   ])
   const texto = todos.map((f) => readFileSync(f, "utf8")).join("\n")
-  for (const resto of ["INSTANCIA_", "reel-local", "ver_reel", "x-instancia-token", "child_process", "yt-dlp", "whisper"]) assert.ok(!texto.includes(resto), resto)
+  for (const resto of ["INSTANCIA_", "reel-local", "ver_reel", "x-instancia-token", "yt-dlp", "whisper"]) assert.ok(!texto.includes(resto), resto)
+  // Lo único que se lanza en su ordenador (23-nov-2026) es su navegador, para conectar la cuenta de research
+  const conector = path.join(raiz, "scripts", "conector-research.mjs")
+  assert.ok(todos.filter((f) => f !== conector).every((f) => !readFileSync(f, "utf8").includes("child_process")))
+  assert.equal((readFileSync(conector, "utf8").match(/\blanzar\(/g) ?? []).length, 1)
   // Ningún código de regla del canon ni la política del servidor en lo que se instala en el ordenador del miembro
   assert.ok(!/\b(SIS|ALG|MET|CUE|IDE|GAN|GUI|FOR|EDI|HIS|PUB|EMB|VEN)-\d{3}\b/.test(texto))
   assert.ok(!texto.includes("CÓMO RESPONDES") && !texto.includes("CÓMO SE ENTREGA"))
@@ -266,7 +288,7 @@ test("con una clave de cuenta, marcas y usar_marca piden GET /marcas, y la marca
   assert.deepEqual(recibidas.map((p) => [p.metodo, p.ruta]), [
     ["GET", "/api/studio/marcas"], ["GET", "/api/studio/marcas"], ["GET", "/api/studio/estado"], ["GET", "/api/studio/marcas"],
   ])
-  assert.ok(recibidas.every((p) => p.cabeceras["x-drazo-licencia"] === CUENTA && p.cabeceras["x-drazo-plugin"] === "3.5.0"))
+  assert.ok(recibidas.every((p) => p.cabeceras["x-drazo-licencia"] === CUENTA && p.cabeceras["x-drazo-plugin"] === "3.6.0"))
   assert.equal(recibidas[0].cabeceras["x-drazo-marca"], undefined)
   assert.equal(recibidas[1].cabeceras["x-drazo-marca"], undefined)
   assert.equal(recibidas[2].cabeceras["x-drazo-marca"], "cafe-del-mar")
@@ -328,8 +350,8 @@ test("marca_sin_elegir llega con su mensaje y sin la clave", async () => {
   assert.ok(!texto(respuesta).includes(CUENTA) && !texto(respuesta).includes("marca_sin_elegir"))
 })
 
-test("la versión es la 3.5.0 en plugin.json", () => {
-  assert.equal(JSON.parse(readFileSync(path.join(raiz, ".claude-plugin", "plugin.json"), "utf8")).version, "3.5.0")
+test("la versión es la 3.6.0 en plugin.json", () => {
+  assert.equal(JSON.parse(readFileSync(path.join(raiz, ".claude-plugin", "plugin.json"), "utf8")).version, "3.6.0")
 })
 
 test("ningún fichero de plugin/ (salvo lo aparcado) nombra lo que una cuenta de agencia no debe ver", () => {
